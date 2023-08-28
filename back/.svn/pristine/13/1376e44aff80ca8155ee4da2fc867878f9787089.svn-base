@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.erp.floor.mapper.original.YpDamageDetailMapper">
+
+    <resultMap type="YpDamageDetail" id="DetailResult">
+        <id property="id" column="id"/>
+        <result property="damageId" column="damage_id"/>
+        <result property="damageNum" column="damage_num"/>
+        <result property="damageArea" column="damage_area"/>
+        <result property="originalFilmId" column="original_film_id"/>
+        <result property="originalFilmName" column="original_film_name"/>
+        <result property="damageNo" column="damage_no"/>
+        <result property="originalNo" column="original_no"/>
+        <result property="originalTypeName" column="original_type_name"/>
+        <result property="originalTypeId" column="original_type_id"/>
+        <result property="originalColor" column="original_color"/>
+        <result property="millName" column="mill_name"/>
+        <result property="originalGrade" column="original_grade"/>
+        <result property="originalThick" column="original_thick"/>
+        <result property="originalLong" column="original_long"/>
+        <result property="originalWidth" column="original_width"/>
+    </resultMap>
+
+    <select id="viewDetail" parameterType="String" resultMap="DetailResult">
+        select y.*,
+        o.original_no,
+        o.original_type_name,
+        o.original_type_id,
+        o.original_color,
+        o.mill_name,
+        o.original_grade,
+        o.original_thick,
+        o.original_long,
+        o.original_width,
+        o.reference_price
+        from yp_damage_detail y
+        left join original_film o on y.original_film_id = o.id
+        <where>
+            <if test="array != null">
+                AND y.damage_id in
+                <foreach collection="array" item="ids" open="(" separator="," close=")">
+                    #{ids}
+                </foreach>
+            </if>
+        </where>
+
+    </select>
+
+</mapper>

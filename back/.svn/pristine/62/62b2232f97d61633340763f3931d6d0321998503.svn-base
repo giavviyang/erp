@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.erp.floor.mapper.sales.OrderMapper">
+
+    <resultMap type="OrderRecord" id="OrderRecordResult">
+        <id property="id" column="id"/>
+        <result property="orderNo" column="order_no"/>
+        <result property="customNo" column="custom_no"/>
+        <result property="rackSplittingStatus" column="rack_splitting_status"/>
+        <result property="productionStatus" column="production_status"/>
+        <result property="packagingStatus" column="packaging_status"/>
+        <result property="shipmentStatus" column="shipment_status"/>
+        <result property="collectionStatus" column="collection_status"/>
+        <result property="preparationDate" column="preparation_date"/>
+        <result property="preparer" column="preparer"/>
+        <result property="orderType" column="order_type"/>
+        <result property="entryName" column="entry_name"/>
+        <result property="customerName" column="customer_name"/>
+        <result property="contacts" column="contacts"/>
+        <result property="contactNumber" column="contact_number"/>
+        <result property="remarks" column="remarks"/>
+        <result property="orderAmount" column="order_amount"/>
+        <result property="receivedAmount" column="received_amount"/>
+        <result property="discountAmount" column="discount_amount"/>
+        <result property="deletedDate" column="deleted_date"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <result property="orderNum" column="order_num"/>
+        <result property="totalArea" column="total_area"/>
+        <result property="totalWeigh" column="total_weigh"/>
+        <result property="orderDeposit" column="order_deposit"/>
+        <result property="warehouseQuantity" column="warehouse_quantity"/>
+        <result property="shipmentStatus" column="Shipment_quantity"/>
+    </resultMap>
+
+    <select id="queryReviewOrder" parameterType="OrderRecordVo" resultMap="OrderRecordResult">
+        select
+        o.*
+        from order_record as o
+        LEFT JOIN order_review as r on o.id = r.order_id
+        where o.is_del = 0
+        AND o.is_cache = 0
+        AND o.rack_splitting_status != 2
+        AND r.order_result = 0
+        <if test="orderNo != null and orderNo != ''">
+            AND o.order_no = #{orderNo}
+        </if>
+        <if test="customNo != null and customNo != ''">
+            AND o.custom_no = #{customNo}
+        </if>
+        <if test="orderType != null and orderType != ''">
+            AND o.order_type = #{orderType}
+        </if>
+        <if test="preparer != null and preparer != ''">
+            AND o.preparer like concat('%', #{preparer}, '%')
+        </if>
+        <if test="entryName != null and entryName != ''">
+            AND o.entry_name like concat('%', #{entryName}, '%')
+        </if>
+        <if test="customerName != null and customerName != ''">
+            AND o.customer_name like concat('%', #{customerName}, '%')
+        </if>
+        <if test="contacts != null and contacts != ''">
+            AND o.contacts like concat('%', #{contacts}, '%')
+        </if>
+        <if test="contactNumber != null and contactNumber != ''">
+            AND o.contact_number like concat('%', #{contactNumber}, '%')
+        </if>
+        <if test="preparationDateStart != null and preparationDateStart != ''"><!-- 开始时间检索 -->
+            AND date_format(o.preparation_date,'%y%m%d') &gt;= date_format(#{preparationDateStart},'%y%m%d')
+        </if>
+        <if test="preparationDateEnd != null and preparationDateEnd != ''"><!-- 结束时间检索 -->
+            AND date_format(o.preparation_date,'%y%m%d') &lt;= date_format(#{preparationDateEnd},'%y%m%d')
+        </if>
+        order by o.created_at desc
+    </select>
+
+    <select id="queryCollectionOrder" parameterType="OrderRecordVo" resultMap="OrderRecordResult">
+        select o.*
+        from order_record as o
+        LEFT JOIN order_review as r on o.id = r.order_id
+        where o.is_del = 0 AND o.is_cache = 0 AND r.order_result = 0
+        <if test="orderNo != null and orderNo != ''">
+            AND o.order_no = #{orderNo}
+        </if>
+        <if test="customNo != null and customNo != ''">
+            AND o.custom_no = #{customNo}
+        </if>
+        <if test="orderType != null and orderType != ''">
+            AND o.order_type = #{orderType}
+        </if>
+        <if test="preparer != null and preparer != ''">
+            AND o.preparer like concat('%', #{preparer}, '%')
+        </if>
+        <if test="entryName != null and entryName != ''">
+            AND o.entry_name like concat('%', #{entryName}, '%')
+        </if>
+        <if test="customerName != null and customerName != ''">
+            AND o.customer_name like concat('%', #{customerName}, '%')
+        </if>
+        <if test="collectionStatus == 1">
+            AND o.collection_status != 2
+        </if>
+        <if test="collectionStatus == 2">
+            AND o.collection_status = #{collectionStatus}
+        </if>
+        <if test="preparationDateStart != null and preparationDateStart != ''"><!-- 开始时间检索 -->
+            AND date_format(o.preparation_date,'%y%m%d') &gt;= date_format(#{preparationDateStart},'%y%m%d')
+        </if>
+        <if test="preparationDateEnd != null and preparationDateEnd != ''"><!-- 结束时间检索 -->
+            AND date_format(o.preparation_date,'%y%m%d') &lt;= date_format(#{preparationDateEnd},'%y%m%d')
+        </if>
+        order by o.created_at desc
+    </select>
+
+</mapper>

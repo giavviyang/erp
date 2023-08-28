@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.erp.floor.mapper.sales.DeliverBusinessMapper">
+
+    <resultMap type="DeliverBusiness" id="DeliverBusinessResult">
+        <id property="id" column="id"/>
+        <result property="deliverId" column="deliver_id"/>
+        <result property="deliverNo" column="deliver_no"/>
+        <result property="flowCardId" column="flow_card_id"/>
+        <result property="orderId" column="order_id"/>
+        <result property="packId" column="pack_id"/>
+        <result property="productId" column="product_id"/>
+        <result property="deliverArea" column="deliver_area"/>
+        <result property="deliverWeight" column="deliver_weight"/>
+        <result property="deliverAmount" column="deliver_amount"/>
+        <result property="deliverNum" column="deliver_num"/>
+        <result property="deliverReturnNum" column="deliver_return_num"/>
+        <result property="deliverPrice" column="deliver_price"/>
+        <result property="packNo" column="pack_no"/>
+        <result property="orderNo" column="order_no"/>
+        <result property="customNo" column="custom_no"/>
+        <result property="entryName" column="entry_name"/>
+        <result property="customerName" column="customer_name"/>
+        <result property="remarks" column="remarks"/>
+        <result property="productName" column="product_name"/>
+        <result property="wideHead" column="wide_head"/>
+        <result property="highHead" column="high_head"/>
+        <result property="warehousingQuantity" column="warehousing_quantity"/>
+        <result property="num" column="num"/>
+        <result property="unitPrice" column="unit_price"/>
+        <result property="position" column="position"/>
+        <result property="requirement" column="requirement"/>
+        <result property="productArea" column="product_area"/>
+        <result property="productWeight" column="product_weight"/>
+        <result property="productAmount" column="product_amount"/>
+        <result property="lengthen" column="lengthen"/>
+        <result property="singleArea" column="single_area"/>
+        <result property="singleClearingArea" column="single_clearing_area"/>
+        <result property="orderPackNum" column="order_pack_num"/>
+        <result property="orderDeliverNum" column="order_deliver_num"/>
+        <result property="completionNum" column="completion_num"/>
+        <result property="packNum" column="pack_num"/>
+        <result property="packDeliverNum" column="pack_deliver_num"/>
+        <result property="deliverPeople" column="deliver_person"/>
+        <result property="deliverDate" column="deliver_date"/>
+    </resultMap>
+
+    <select id="queryOrderBusiness" parameterType="String" resultMap="DeliverBusinessResult">
+        select
+        b.* ,
+        p.product_name,
+        p.wide_head,
+        p.high_head,
+        p.warehousing_quantity,
+        p.num,
+        p.unit_price,
+        p.position,
+        p.requirement,
+        p.product_area,
+        p.product_weight,
+        p.product_amount,
+        p.lengthen,
+        p.single_area,
+        p.single_clearing_area,
+        p.order_pack_num,
+        p.order_deliver_num,
+        p.completion_num,
+        r.order_no,
+        r.custom_no,
+        r.entry_name,
+        r.customer_name
+        from deliver_business b
+        left join order_product p on b.product_id = p.id
+        left join order_record r on r.id = p.order_id
+        <where>
+            <if test="array != null">
+                AND b.deliver_id in
+                <foreach collection="array" item="ids" open="(" separator="," close=")">
+                    #{ids}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+    <select id="queryPackBusiness" parameterType="String" resultMap="DeliverBusinessResult">
+        select
+        b.* ,
+        p.product_name,
+        p.wide_head,
+        p.high_head,
+        p.warehousing_quantity,
+        p.num,
+        p.unit_price,
+        p.position,
+        p.requirement,
+        p.product_area,
+        p.product_weight,
+        p.product_amount,
+        p.lengthen,
+        p.single_area,
+        p.single_clearing_area,
+        p.order_pack_num,
+        p.order_deliver_num,
+        p.completion_num,
+        pb.pack_num,
+        pb.pack_deliver_num,
+        pb.pack_no,
+        r.order_no,
+        r.custom_no,
+        r.entry_name,
+        r.customer_name
+        from deliver_business b
+        left join packing_business pb on b.pack_id = pb.pack_id and b.product_id = pb.product_id
+        left join order_product p on b.product_id = p.id
+        left join order_record r on r.id = p.order_id
+        where b.deliver_id = #{deliverId}
+    </select>
+
+    <select id="queryBusiness" parameterType="String" resultMap="DeliverBusinessResult">
+        select
+        b.* ,
+        p.product_name,
+        p.wide_head,
+        p.high_head,
+        p.warehousing_quantity,
+        p.num,
+        p.unit_price,
+        p.position,
+        p.requirement,
+        p.product_area,
+        p.product_weight,
+        p.product_amount,
+        p.lengthen,
+        p.single_area,
+        p.single_clearing_area,
+        p.order_pack_num,
+        p.order_deliver_num,
+        p.completion_num,
+        r.order_no,
+        r.custom_no,
+        r.entry_name,
+        r.customer_name
+        from deliver_business b
+        left join order_product p on b.product_id = p.id
+        left join order_record r on r.id = p.order_id
+        left join deliver_record d on b.deliver_id = d.id
+        where d.is_del = 0 AND d.deliver_status = 0
+        <if test="orderNo != null and orderNo != ''">
+            AND r.order_no = #{orderNo}
+        </if>
+        <if test="deliverNo != null and deliverNo != ''">
+            AND d.deliver_no = #{deliverNo}
+        </if>
+        <if test="customNo != null and customNo != ''">
+            AND r.custom_no = #{customNo}
+        </if>
+        <if test="customerName != null and customerName != ''">
+            AND r.customer_name like concat('%', #{customerName}, '%')
+        </if>
+        order by b.deliver_no desc
+    </select>
+
+    <select id="queryDeliverBus" parameterType="String" resultMap="DeliverBusinessResult">
+        select
+        b.* ,
+        p.product_name,
+        p.wide_head,
+        p.high_head,
+        p.warehousing_quantity,
+        p.num,
+        p.unit_price,
+        p.position,
+        p.requirement,
+        p.product_area,
+        p.product_weight,
+        p.product_amount,
+        p.lengthen,
+        p.single_area,
+        p.single_clearing_area,
+        p.order_pack_num,
+        p.order_deliver_num,
+        p.completion_num,
+        r.deliver_person,
+        r.deliver_date
+        from deliver_business b
+        left join order_product p on b.product_id = p.id
+        left join deliver_record r on b.deliver_id = r.id
+        where b.order_id = #{id}
+        order by b.deliver_no desc
+    </select>
+
+
+</mapper>

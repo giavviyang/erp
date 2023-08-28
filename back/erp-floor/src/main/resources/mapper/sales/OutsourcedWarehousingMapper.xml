@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.erp.floor.mapper.sales.OutsourcedWarehousingMapper">
+
+    <resultMap id="OrderProductResult" type="OutsourcedWarehousing">
+        <id property="id" column="id"/>
+        <result property="outsourcingId" column="outsourcing_id"/>
+        <result property="outsourcingNo" column="outsourcing_no"/>
+        <result property="warehousedNo" column="warehoused_no"/>
+        <result property="warehousedPerson" column="warehoused_person"/>
+        <result property="warehousedDate" column="warehoused_date"/>
+        <result property="warehousedNum" column="warehoused_num"/>
+        <result property="remarks" column="remarks"/>
+
+        <result property="outgoingDate" column="outgoing_date"/>
+        <result property="outsourcingUnit" column="outsourcing_unit"/>
+        <result property="outsourcingLeader" column="outsourcing_leader"/>
+    </resultMap>
+
+    <select id="queryData" parameterType="OutsourcedWarehousing" resultMap="OrderProductResult">
+        select w.*, o.outgoing_date, o.outsourcing_unit, o.outsourcing_leader
+        from outsourced_warehousing w
+        left join outsourced o on w.outsourcing_id = o.id
+        <where>
+            <if test="warehousedNo != null and warehousedNo != ''">
+                AND w.warehoused_no like concat('%', #{warehousedNo}, '%')
+            </if>
+            <if test="outsourcingNo != null and outsourcingNo != ''">
+                AND w.outsourcing_no = #{outsourcingNo}
+            </if>
+             <if test="warehousedPerson != null and warehousedPerson != ''">
+                AND w.warehoused_person = #{warehousedPerson}
+            </if>
+            <if test="warehousedDateStart != null and warehousedDateStart != ''"><!-- 开始时间检索 -->
+                AND date_format(w.warehoused_date,'%y%m%d') &gt;= date_format(#{warehousedDateStart},'%y%m%d')
+            </if>
+            <if test="warehousedDateEnd != null and warehousedDateEnd != ''"><!-- 结束时间检索 -->
+                AND date_format(w.warehoused_date,'%y%m%d') &lt;= date_format(#{warehousedDateEnd},'%y%m%d')
+            </if>
+        </where>
+        order by w.warehoused_date desc
+    </select>
+
+    <select id="queryExportData" parameterType="String" resultMap="OrderProductResult">
+        select w.*, o.outgoing_date, o.outsourcing_unit, o.outsourcing_leader
+        from outsourced_warehousing w
+        left join outsourced o on w.outsourcing_id = o.id
+        <where>
+            <if test="array != null">
+                AND w.id in
+                <foreach collection="array" item="ids" open="(" separator="," close=")">
+                    #{ids}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+
+</mapper>

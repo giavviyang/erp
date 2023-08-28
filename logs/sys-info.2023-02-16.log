@@ -1,0 +1,26 @@
+14:46:26.970 [background-preinit] INFO  o.h.v.i.util.Version - [<clinit>,21] - HV000001: Hibernate Validator 6.2.3.Final
+14:46:26.974 [restartedMain] INFO  c.e.RuoYiApplication - [logStarting,55] - Starting RuoYiApplication using Java 19.0.1 on 192.168.0.25 with PID 72289 (/Users/yangqingqing/Desktop/project/erp/back/erp-admin/target/classes started by yangqingqing in /Users/yangqingqing/Desktop/project/erp/back)
+14:46:26.976 [restartedMain] INFO  c.e.RuoYiApplication - [logStartupProfileInfo,686] - The following 1 profile is active: "druid"
+14:46:28.292 [restartedMain] INFO  o.a.c.h.Http11NioProtocol - [log,173] - Initializing ProtocolHandler ["http-nio-8081"]
+14:46:28.293 [restartedMain] INFO  o.a.c.c.StandardService - [log,173] - Starting service [Tomcat]
+14:46:28.293 [restartedMain] INFO  o.a.c.c.StandardEngine - [log,173] - Starting Servlet engine: [Apache Tomcat/9.0.63]
+14:46:28.326 [restartedMain] INFO  o.a.c.c.C.[.[.[/] - [log,173] - Initializing Spring embedded WebApplicationContext
+14:46:29.167 [restartedMain] INFO  c.a.d.p.DruidDataSource - [init,998] - {dataSource-1} inited
+14:46:33.436 [restartedMain] INFO  o.a.c.h.Http11NioProtocol - [log,173] - Starting ProtocolHandler ["http-nio-8081"]
+14:46:34.601 [restartedMain] INFO  c.e.RuoYiApplication - [logStarted,61] - Started RuoYiApplication in 7.817 seconds (JVM running for 8.45)
+14:47:16.616 [http-nio-8081-exec-1] INFO  o.a.c.c.C.[.[.[/] - [log,173] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+14:47:35.088 [schedule-pool-1] INFO  sys-user - [run,56] - [127.0.0.1]内网IP[admin][Success][登录成功]
+14:48:22.110 [SpringApplicationShutdownHook] INFO  sys-user - [shutdownAsyncManager,31] - ====关闭后台任务任务线程池====
+14:48:22.115 [SpringApplicationShutdownHook] INFO  c.a.d.p.DruidDataSource - [close,2071] - {dataSource-1} closing ...
+14:48:22.118 [SpringApplicationShutdownHook] INFO  c.a.d.p.DruidDataSource - [close,2144] - {dataSource-1} closed
+14:48:23.930 [background-preinit] INFO  o.h.v.i.util.Version - [<clinit>,21] - HV000001: Hibernate Validator 6.2.3.Final
+14:48:23.933 [restartedMain] INFO  c.e.RuoYiApplication - [logStarting,55] - Starting RuoYiApplication using Java 19.0.1 on 192.168.0.25 with PID 72610 (/Users/yangqingqing/Desktop/project/erp/back/erp-admin/target/classes started by yangqingqing in /Users/yangqingqing/Desktop/project/erp/back)
+14:48:23.933 [restartedMain] INFO  c.e.RuoYiApplication - [logStartupProfileInfo,686] - The following 1 profile is active: "druid"
+14:48:25.239 [restartedMain] INFO  o.a.c.h.Http11NioProtocol - [log,173] - Initializing ProtocolHandler ["http-nio-8081"]
+14:48:25.240 [restartedMain] INFO  o.a.c.c.StandardService - [log,173] - Starting service [Tomcat]
+14:48:25.240 [restartedMain] INFO  o.a.c.c.StandardEngine - [log,173] - Starting Servlet engine: [Apache Tomcat/9.0.63]
+14:48:25.275 [restartedMain] INFO  o.a.c.c.C.[.[.[/] - [log,173] - Initializing Spring embedded WebApplicationContext
+14:48:26.866 [restartedMain] INFO  c.a.d.p.DruidDataSource - [init,998] - {dataSource-1} inited
+14:48:30.921 [restartedMain] INFO  o.a.c.h.Http11NioProtocol - [log,173] - Starting ProtocolHandler ["http-nio-8081"]
+14:48:32.133 [restartedMain] INFO  c.e.RuoYiApplication - [logStarted,61] - Started RuoYiApplication in 8.375 seconds (JVM running for 8.884)
+14:48:37.155 [http-nio-8081-exec-1] INFO  o.a.c.c.C.[.[.[/] - [log,173] - Initializing Spring DispatcherServlet 'dispatcherServlet'

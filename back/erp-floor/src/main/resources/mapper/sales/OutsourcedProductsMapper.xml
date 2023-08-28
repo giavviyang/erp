@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.erp.floor.mapper.sales.OutsourcedProductsMapper">
+
+    <resultMap id="OrderProductResult" type="OutsourcedProducts">
+        <id property="id" column="id"/>
+        <result property="orderId" column="order_id"/>
+        <result property="productId" column="product_id"/>
+        <result property="outsourcingWorkmanship" column="outsourcing_workmanship"/>
+        <result property="outsourcingNum" column="outsourcing_num"/>
+        <result property="warehouseNum" column="warehouse_num"/>
+        <result property="outsourcingPrice" column="outsourcing_price"/>
+        <result property="outsourcingId" column="outsourcing_id"/>
+        <result property="outsourcingNo" column="outsourcing_no"/>
+        <result property="processingRequirements" column="processing_requirements"/>
+        <result property="orderNo" column="order_no"/>
+        <result property="customNo" column="custom_no"/>
+        <result property="entryName" column="entry_name"/>
+        <result property="customerName" column="customer_name"/>
+        <result property="productName" column="product_name"/>
+        <result property="wideHead" column="wide_head"/>
+        <result property="highHead" column="high_head"/>
+        <result property="position" column="position"/>
+        <result property="requirement" column="requirement"/>
+        <result property="outsourcedNum" column="outsourced_num"/>
+    </resultMap>
+
+    <select id="detailedView" parameterType="String" resultMap="OrderProductResult">
+        select  p.*, r.order_no, r.custom_no, r.entry_name, r.customer_name, o.product_name
+        , o.wide_head, o.high_head, o.position, o.requirement, o.outsourced_num
+        from outsourced_products p
+        left join order_record r on p.order_id = r.id
+        left join order_product o on p.product_id = o.id
+        <where>
+            <if test="array != null">
+                AND p.outsourcing_id in
+                <foreach collection="array" item="ids" open="(" separator="," close=")">
+                    #{ids}
+                </foreach>
+            </if>
+        </where>
+        order by r.order_no desc
+    </select>
+
+</mapper>

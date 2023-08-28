@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.erp.floor.mapper.original.YpOperationDetailMapper">
+
+    <resultMap type="YpOperationDetail" id="DetailResult">
+        <id property="id" column="id"/>
+        <result property="operationId" column="operation_id"/>
+        <result property="purchaseId" column="purchase_id"/>
+        <result property="purchaseNo" column="purchase_no"/>
+        <result property="originalFilmId" column="original_film_id"/>
+        <result property="originalFilmName" column="original_film_name"/>
+        <result property="operationNum" column="operation_num"/>
+        <result property="operationPrice" column="operation_price"/>
+        <result property="operationArea" column="operation_area"/>
+        <result property="originalNo" column="original_no"/>
+        <result property="originalTypeName" column="original_type_name"/>
+        <result property="originalTypeId" column="original_type_id"/>
+        <result property="originalColor" column="original_color"/>
+        <result property="millName" column="mill_name"/>
+        <result property="originalGrade" column="original_grade"/>
+        <result property="originalThick" column="original_thick"/>
+        <result property="originalLong" column="original_long"/>
+        <result property="originalWidth" column="original_width"/>
+    </resultMap>
+
+    <select id="selectByOperationId" parameterType="String" resultMap="DetailResult">
+        select y.*,
+        o.original_no,
+        o.original_type_name,
+        o.original_type_id,
+        o.original_color,
+        o.mill_name,
+        o.original_grade,
+        o.original_thick,
+        o.original_long,
+        o.original_width
+        from yp_operation_detail y
+        left join original_film o on y.original_film_id = o.id
+        left join yp_warehouse_operation w on  y.operation_id = w.id
+        <where>
+            <if test="ids != null">
+                AND y.operation_id in
+                <foreach collection="ids" item="ids" open="(" separator="," close=")">
+                    #{ids}
+                </foreach>
+            </if>
+            <if test="type != null and type != ''">
+                AND w.operation_type = #{type}
+            </if>
+        </where>
+    </select>
+
+</mapper>

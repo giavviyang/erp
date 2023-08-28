@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.erp.floor.mapper.accessories.AccessoriesDamageDetailMapper">
+
+    <resultMap type="AccessoriesDamageDetail" id="DetailResult">
+        <id property="id" column="id"/>
+        <result property="damageId" column="damage_id"/>
+        <result property="damageNum" column="damage_num"/>
+        <result property="damageNo" column="damage_no"/>
+        <result property="accessoriesId" column="accessories_id"/>
+        <result property="accessoriesName" column="accessories_name"/>
+        <result property="typeName" column="type_name"/>
+        <result property="typeId" column="type_id"/>
+        <result property="accessoriesSpecifications" column="accessories_specifications"/>
+        <result property="accessoriesCompany" column="accessories_company"/>
+        <result property="accessoriesMill" column="accessories_mill"/>
+        <result property="referencePrice" column="reference_price"/>
+        <result property="alarmInventory" column="alarm_inventory"/>
+        <result property="remarks" column="remarks"/>
+    </resultMap>
+
+    <select id="viewDetail" parameterType="String" resultMap="DetailResult">
+        select y.*,
+        o.type_name ,
+        o.type_id ,
+        o.accessories_specifications ,
+        o.accessories_company ,
+        o.accessories_mill ,
+        o.reference_price ,
+        o.alarm_inventory ,
+        o.remarks
+        from accessories_damage_detail y
+        left join accessories o on y.accessories_id = o.id
+        <where>
+            <if test="array != null">
+                AND y.damage_id in
+                <foreach collection="array" item="ids" open="(" separator="," close=")">
+                    #{ids}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+</mapper>

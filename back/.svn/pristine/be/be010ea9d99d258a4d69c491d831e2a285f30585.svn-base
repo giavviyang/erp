@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.erp.floor.mapper.sales.PackingBusinessMapper">
+
+    <resultMap id="PackingBusinessResult" type="PackingBusiness">
+        <id property="id" column="id"/>
+        <result property="orderId" column="order_id"/>
+        <result property="orderNo" column="order_no"/>
+        <result property="customNo" column="custom_no"/>
+        <result property="packId" column="pack_id"/>
+        <result property="packNo" column="pack_no"/>
+        <result property="entryName" column="entry_name"/>
+        <result property="customerName" column="customer_name"/>
+        <result property="productId" column="product_id"/>
+        <result property="productName" column="product_name"/>
+        <result property="wideHead" column="wide_head"/>
+        <result property="wideLittleHead" column="wide_little_head"/>
+        <result property="highHead" column="high_head"/>
+        <result property="highLittleHead" column="high_little_head"/>
+        <result property="angle" column="angle"/>
+        <result property="diameter" column="diameter"/>
+        <result property="diameterIncrement" column="diameter_increment"/>
+        <result property="innerArcLength" column="inner_arc_length"/>
+        <result property="arcDiameter" column="arc_diameter"/>
+        <result property="num" column="num"/>
+        <result property="unitPrice" column="unit_price"/>
+        <result property="position" column="position"/>
+        <result property="requirement" column="requirement"/>
+        <result property="productArea" column="product_area"/>
+        <result property="productWeight" column="product_weight"/>
+        <result property="productAmount" column="product_amount"/>
+        <result property="packNum" column="pack_num"/>
+        <result property="packDeliverNum" column="pack_deliver_num"/>
+        <result property="packName" column="packaging_name"/>
+        <result property="orderDeliverNum" column="order_deliver_num"/>
+        <result property="completionNum" column="completion_num"/>
+
+    </resultMap>
+
+
+    <select id="obtainPackProduct" parameterType="PackingRecordVo" resultMap="PackingBusinessResult">
+        select b.*, r.packaging_name, p.order_deliver_num, p.completion_num
+        from packing_business b
+        left join packing_record r on b.pack_id = r.id
+        left join order_product p on b.product_id = p.id
+        where b.pack_num != 0
+        <if test="orderNo != null and orderNo != ''">
+            AND b.order_no = #{orderNo}
+        </if>
+        <if test="customNo != null and customNo != ''">
+            AND b.custom_no = #{customNo}
+        </if>
+        <if test="entryName != null and entryName != ''">
+            AND b.entry_name like concat('%', #{entryName}, '%')
+        </if>
+        <if test="customerName != null and customerName != ''">
+            AND b.customer_name like concat('%', #{customerName}, '%')
+        </if>
+        <if test="productName != null and productName != ''">
+            AND b.product_name like concat('%', #{productName}, '%')
+        </if>
+        <if test="packagingName != null and packagingName != ''">
+            AND r.packaging_name like concat('%', #{packagingName}, '%')
+        </if>
+        <if test="packagingNo != null and packagingNo != ''">
+            AND r.packaging_no like concat('%', #{packagingNo}, '%')
+        </if>
+        <if test="packagingDateStart != null and packagingDateStart != ''"><!-- 开始时间检索 -->
+            and date_format(r.packaging_date,'%y%m%d') &gt;= date_format(#{packagingDateStart},'%y%m%d')
+        </if>
+        <if test="packagingDateEnd != null and packagingDateEnd != ''"><!-- 结束时间检索 -->
+            and date_format(r.packaging_date,'%y%m%d') &lt;= date_format(#{packagingDateEnd},'%y%m%d')
+        </if>
+        order by b.pack_no desc
+    </select>
+
+    <select id="queryPack" parameterType="String" resultMap="PackingBusinessResult">
+        select b.*, r.packaging_name
+        from packing_business b
+        left join packing_record r on b.pack_id = r.id
+        left join order_product p on b.product_id = p.id
+        where b.order_id = #{orderId}
+        order by b.pack_no desc
+    </select>
+
+
+
+</mapper>

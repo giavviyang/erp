@@ -1,0 +1,235 @@
+package com.erp.floor.pojo.sales.domain;
+
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import com.erp.common.annotation.Excel;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import io.swagger.annotations.ApiModel;
+import io.swagger.annotations.ApiModelProperty;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
+
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 订单表
+ *
+ * @version 1.0
+ * @author： WangQiMin
+ * @date： 2022-07-21 11:19
+ */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@TableName(value = "order_record")
+@ApiModel(value = "订单", description = "订单实体类")
+public class OrderRecord {
+
+    @ApiModelProperty("订单ID")
+    @TableId(value = "id", type = IdType.UUID)
+    private String id;
+
+    @Excel(name = "订单编号")
+    @ApiModelProperty("订单编号")
+    @TableField(value = "order_no")
+    private String orderNo;
+
+    @Excel(name = "自定义编号")
+    @ApiModelProperty("自定义编号")
+    @TableField(value = "custom_no")
+    private String customNo;
+
+    @Excel(name = "分架状态", readConverterExp = "0=未分架,1=部分分架,2=分架完成")
+    @ApiModelProperty("分架状态（0未分架，1部分分架，2分架完成）")
+    @TableField(value = "rack_splitting_status")
+    private Integer rackSplittingStatus;
+
+    @Excel(name = "生产状态", readConverterExp = "0=未生产,1=生产中,2=生产完成")
+    @ApiModelProperty("生产状态（0未生产，1生产中，2生产完成）")
+    @TableField(value = "production_status")
+    private Integer productionStatus;
+
+    @Excel(name = "打包状态", readConverterExp = "0=未打包,1=部分打包,2=打包完成")
+    @ApiModelProperty("打包状态（0未打包，1部分打包，2打包完成）")
+    @TableField(value = "packaging_status")
+    private Integer packagingStatus;
+
+    @Excel(name = "发货状态", readConverterExp = "0=未发货,1=部分发货,2=发货完成")
+    @ApiModelProperty("发货状态（0未发货，1部分发货，2发货完成）")
+    @TableField(value = "shipment_status")
+    private Integer shipmentStatus;
+
+    @Excel(name = "收款状态", readConverterExp = "0=未收款,1=部分收款,2=收款完成")
+    @ApiModelProperty("收款状态（0未收款，1部分收款，2收款完成）")
+    @TableField(value = "collection_status")
+    private Integer collectionStatus;
+
+    @Excel(name = "下单日期", width = 30 , dateFormat = "yyyy-MM-dd HH:mm:ss")
+    @ApiModelProperty("下单日期")
+    @TableField(value = "preparation_date")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private Date preparationDate;
+
+    @Excel(name = "下单人")
+    @ApiModelProperty("下单人")
+    @TableField(value = "preparer")
+    private String preparer;
+
+    @ApiModelProperty("创建日期")
+    @TableField(value = "created_at")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private Date createdAt;
+
+    @ApiModelProperty("修改日期")
+    @TableField(value = "updated_at")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private Date updatedAt;
+
+    @Excel(name = "订单类型")
+    @ApiModelProperty("订单类型")
+    @TableField(value = "order_type")
+    private String orderType;
+
+    @Excel(name = "项目名称")
+    @ApiModelProperty("项目名称")
+    @TableField(value = "entry_name")
+    private String entryName;
+
+    @Excel(name = "客户名称")
+    @ApiModelProperty("客户名称")
+    @TableField(value = "customer_name")
+    private String customerName;
+
+    @Excel(name = "联系人")
+    @ApiModelProperty("联系人")
+    @TableField(value = "contacts")
+    private String contacts;
+
+    @Excel(name = "联系电话")
+    @ApiModelProperty("联系电话")
+    @TableField(value = "contact_number")
+    private String contactNumber;
+
+    @Excel(name = "订单备注")
+    @ApiModelProperty("订单备注")
+    @TableField(value = "order_remarks")
+    private String OrderRemarks;
+
+    @Excel(name = "生产备注")
+    @ApiModelProperty("生产备注")
+    @TableField(value = "remarks")
+    private String remarks;
+
+    @Excel(name = "订单总金额(元)")
+    @ApiModelProperty("订单总金额")
+    @TableField(value = "order_amount")
+    private Double orderAmount;
+
+    @Excel(name = "已收款金额(元)")
+    @ApiModelProperty("已收款金额")
+    @TableField(value = "received_amount")
+    private Double receivedAmount;
+
+    @ApiModelProperty("删除时间")
+    @TableField(value = "deleted_date")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private Date deletedDate;
+
+    @Excel(name = "订单数量")
+    @ApiModelProperty("订单数量")
+    @TableField(value = "order_num")
+    private Integer orderNum;
+
+    @Excel(name = "仓库数量")
+    @ApiModelProperty("仓库数量")
+    @TableField(value = "warehouse_quantity")
+    private Integer warehouseQuantity;
+
+    @ApiModelProperty("发货数量")
+    @TableField(value = "shipment_quantity")
+    private Integer shipmentQuantity;
+
+    @ApiModelProperty("软删除（0未删除、1已删除）")
+    @TableField(value = "is_del")
+    private Integer isDel;
+
+    @ApiModelProperty("涉及附加项")
+    @TableField(value = "order_additional")
+    private String orderAdditional;
+
+    @ApiModelProperty("缓存数据（1为缓存数据）")
+    @TableField(value = "is_cache")
+    private Integer isCache;
+
+    @Excel(name = "总面积(m²)")
+    @ApiModelProperty("总面积")
+    @TableField(value = "total_area")
+    private Double totalArea;
+
+    @Excel(name = "总重量(kg)")
+    @ApiModelProperty("总重量")
+    @TableField(value = "total_weigh")
+    private Double totalWeigh;
+
+    @Excel(name = "总周长(m)")
+    @ApiModelProperty("总周长")
+    @TableField(value = "total_lengthen")
+    private Double totalLengthen;
+
+    @Excel(name = "定金(元)")
+    @ApiModelProperty("定金")
+    @TableField(value = "order_deposit")
+    private Double orderDeposit;
+
+    @Excel(name = "加急费(元)")
+    @ApiModelProperty("加急费")
+    @TableField(value = "urgent_cost")
+    private Double urgentCost;
+
+    @Excel(name = "附加费(元)")
+    @ApiModelProperty("附加费")
+    @TableField(value = "additional_cost")
+    private Double additionalCost;
+
+    @Excel(name = "收货地址")
+    @ApiModelProperty("收货地址")
+    @TableField(value = "receipt_address")
+    private String receiptAddress;
+
+    @Excel(name = "收货日期", width = 30, dateFormat = "yyyy-MM-dd HH:mm:ss")
+    @ApiModelProperty("收货日期")
+    @TableField(value = "receipt_date")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private Date receiptDate;
+
+    @Excel(name = "结算方式")
+    @ApiModelProperty("结算方式")
+    @TableField(value = "settlement_method")
+    private String settlementMethod;
+
+
+
+    @ApiModelProperty("产品集合")
+    @TableField(exist = false)
+    private List<Map<String, Object>> productList;
+
+    @ApiModelProperty("附加项id集合")
+    @TableField(exist = false)
+    private List<String> additionalIds;
+
+    @ApiModelProperty("订单审核对象")
+    @TableField(exist = false)
+    private OrderReview orderReview;
+
+}

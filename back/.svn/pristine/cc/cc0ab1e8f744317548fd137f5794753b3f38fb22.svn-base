@@ -1,0 +1,193 @@
+package com.erp.system.service.impl;
+
+import com.alibaba.fastjson2.JSONObject;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.bstek.ureport.Utils;
+import com.bstek.ureport.export.html.HtmlReport;
+import com.erp.common.config.RuoYiConfig;
+import com.erp.common.constant.ResultConstants;
+import com.erp.common.core.domain.AjaxResult;
+import com.erp.common.core.domain.CommonResult;
+import com.erp.common.utils.SecurityUtils;
+import com.erp.common.utils.StringUtils;
+import com.erp.common.utils.file.FileTypeUtils;
+import com.erp.common.utils.file.FileUploadUtils;
+import com.erp.common.utils.file.ImageUtils;
+import com.erp.floor.headler.MyMetaObjectHandler;
+import com.erp.floor.mapper.system.SysTemplateFileMapper;
+import com.erp.floor.mapper.system.SysTemplateMapper;
+import com.erp.floor.mapper.system.SysTemplateTypeMapper;
+import com.erp.floor.pojo.system.domain.SysSemiProduct;
+import com.erp.floor.pojo.system.domain.SysTemplate;
+import com.erp.floor.pojo.system.domain.SysTemplateFile;
+import com.erp.floor.pojo.system.domain.SysTemplateType;
+import com.erp.system.service.ISysTemplateService;
+import com.erp.system.service.ISysTemplateTypeService;
+import org.apache.commons.io.FileUtils;
+import org.apache.ibatis.annotations.Mapper;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import sun.misc.BASE64Encoder;
+import com.bstek.ureport.export.ExportManager;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpServletResponseWrapper;
+import java.io.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * @author hanfei
+ * @version 1.0
+ * @Description
+ * @date 2022/7/21 15:46
+ */
+@Service
+public class SysTemplateServiceImpl extends ServiceImpl<SysTemplateMapper, SysTemplate> implements ISysTemplateService {
+
+    @Resource
+    private SysTemplateMapper mapper;
+    @Resource
+    private SysTemplateFileMapper fileMapper;
+
+
+    @Override
+    @Transactional
+    public CommonResult insertTemplate(SysTemplate sysTemplate) throws Exception {
+        MyMetaObjectHandler.setLoginUser(SecurityUtils.getLoginUser());
+        int i = mapper.insert(sysTemplate);
+        if(i <= 0){
+            throw new Exception(ResultConstants.SAVE_ERROR);
+        }
+        if(sysTemplate.getTemplateFile() != null){
+            SysTemplateFile file = sysTemplate.getTemplateFile();
+            file.setTemplateId(sysTemplate.getId());
+            i = fileMapper.insert(file);
+            if(i <= 0){
+                throw new Exception(ResultConstants.SAVE_ERROR);
+            }
+        }
+        return CommonResult.success(ResultConstants.SAVE_SUCCESS);
+    }
+
+    @Override
+    @Transactional
+    public CommonResult updatedTemplate(String id, SysTemplate sysTemplate) throws Exception {
+        MyMetaObjectHandler.setLoginUser(SecurityUtils.getLoginUser());
+        sysTemplate.setId(id);
+        mapper.updateById(sysTemplate);
+        if(sysTemplate.getTemplateFile() != null){
+            SysTemplateFile templateFile = sysTemplate.getTemplateFile();
+            LambdaQueryWrapper<SysTemplateFile> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(SysTemplateFile::getTemplateId,id);
+            wrapper.eq(SysTemplateFile::getFileName,templateFile.getFileName());
+            wrapper.eq(SysTemplateFile::getFilePath,templateFile.getFilePath());
+            wrapper.eq(SysTemplateFile::getFileSize,templateFile.getFileSize());
+            wrapper.eq(SysTemplateFile::getFileType,templateFile.getFileType());
+            int i = fileMapper.selectCount(wrapper);
+            if(i <= 0){
+                LambdaQueryWrapper<SysTemplateFile> wrapper2 = new LambdaQueryWrapper<>();
+                wrapper2.eq(SysTemplateFile::getTemplateId,id);
+                fileMapper.delete(wrapper2);
+                templateFile.setTemplateId(id);
+                fileMapper.insert(templateFile);
+            }
+
+        }
+        return CommonResult.success(ResultConstants.UPD_SUCCESS);
+    }
+
+    @Override
+    @Transactional
+    public CommonResult deletedTemplate(List<String> ids) throws Exception {
+        int i = mapper.deleteBatchIds(ids);
+        if(i <= 0){
+            throw new Exception(ResultConstants.DEL_ERROR);
+        }
+        LambdaQueryWrapper<SysTemplateFile> wrapper = new LambdaQueryWrapper<>();
+        wrapper.in(SysTemplateFile::getTemplateId,ids);
+        fileMapper.delete(wrapper);
+        return CommonResult.success(ResultConstants.DEL_SUCCESS);
+    }
+
+    @Override
+    public CommonResult getTemplateList(SysTemplate sysTemplate) {
+        LambdaQueryWrapper<SysTemplate> queryWrapper = new LambdaQueryWrapper<>();
+        if(StringUtils.isNotEmpty(sysTemplate.getTemplateName())){
+            queryWrapper.like(SysTemplate::getTemplateName,sysTemplate.getTemplateName());
+        }
+        if(StringUtils.isNotEmpty(sysTemplate.getTypeId())){
+            queryWrapper.like(SysTemplate::getTypeId,sysTemplate.getTypeId());
+        }
+        queryWrapper.orderByDesc(SysTemplate::getCreatedAt);
+        List<SysTemplate> list = mapper.selectList(queryWrapper);
+        int count = mapper.selectCount(queryWrapper);
+        CommonResult result = CommonResult.success(ResultConstants.QUERY_SUCCESS,list);
+        result.setCount(count);
+        return result;
+    }
+
+    @Override
+    public CommonResult getTemplateDetailed(String id) {
+        SysTemplate sysTemplate = mapper.selectById(id);
+        LambdaQueryWrapper<SysTemplateFile> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SysTemplateFile::getTemplateId,id);
+        SysTemplateFile sysTemplateFile = fileMapper.selectOne(wrapper);
+        sysTemplate.setTemplateFile(sysTemplateFile);
+        return CommonResult.success(ResultConstants.QUERY_SUCCESS,sysTemplate);
+    }
+
+    @Override
+    public CommonResult uploadTemplat(MultipartFile file) throws IOException {
+        String uploadPath = RuoYiConfig.getProfile()+"/template";
+        String result = FileUploadUtils.upload(uploadPath,file);
+        SysTemplateFile resultFile = new SysTemplateFile();
+        resultFile.setFileName(result.substring(result.lastIndexOf('/')+1));
+        resultFile.setFileSize(com.erp.common.utils.file.FileUtils.byteCountToDisplaySize(file.getSize(), 1024) + "KB");
+        resultFile.setFileType(result.substring(result.lastIndexOf('.')+1));
+        resultFile.setFilePath(result.replace("/profile",RuoYiConfig.getProfile()));
+        return CommonResult.success(ResultConstants.UPLOAD_SUCCESS,resultFile);
+    }
+
+    @Override
+    public ResponseEntity<byte[]> download(String id) throws IOException {
+        LambdaQueryWrapper<SysTemplateFile> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SysTemplateFile::getTemplateId,id);
+        SysTemplateFile templateFile = fileMapper.selectOne(wrapper);
+
+        File file = new File(templateFile.getFilePath());
+        String filename = templateFile.getFileName();
+        //设置响应头
+        HttpHeaders headers = new HttpHeaders();
+        //通知浏览器以下载的方式打开文件
+        headers.setContentDispositionFormData("attachment", filename);
+        //定义以流的形式下载返回文件数据
+        headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+        //使用springmvc框架的ResponseEntity对象封装返回数据
+        return new ResponseEntity<>(FileUtils.readFileToByteArray(file), headers, HttpStatus.OK);
+    }
+
+    @Override
+    public CommonResult getTemplateData(String id, Map<String, Object> formData) {
+        LambdaQueryWrapper<SysTemplateFile> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SysTemplateFile::getTemplateId,id);
+        SysTemplateFile file = fileMapper.selectOne(wrapper);
+        if(file != null){
+            ExportManager exportManager=(ExportManager) Utils.getApplicationContext().getBean(ExportManager.BEAN_ID);
+            HtmlReport htmlReport = exportManager.exportHtml("file:"+file.getFileName(),"",formData);
+            Map<String,Object> result = new HashMap<>();
+            result.put("html",htmlReport.getContent());
+            result.put("css",htmlReport.getStyle());
+            return CommonResult.success(ResultConstants.QUERY_SUCCESS,result);
+        }
+        return CommonResult.error("打印失败,未找到模板文件相关信息");
+    }
+}

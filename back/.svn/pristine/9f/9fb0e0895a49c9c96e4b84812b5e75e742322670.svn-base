@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.erp.floor.mapper.sales.CpProductRecordMapper">
+
+    <resultMap type="CpProductRecord" id="CpProductRecordResult">
+        <id property="id" column="id"/>
+        <result property="cpRecordId" column="cp_record_id"/>
+        <result property="orderProductId" column="order_product_id"/>
+        <result property="productNumber" column="product_number"/>
+        <result property="productArea" column="product_area"/>
+        <result property="productWeight" column="product_weight"/>
+        <result property="warehouseLocation" column="warehouse_location"/>
+        <result property="shelfLocation" column="shelf_location"/>
+        <result property="productName" column="product_name"/>
+        <result property="wideHead" column="wide_head"/>
+        <result property="highHead" column="high_head"/>
+        <result property="num" column="num"/>
+        <result property="unitPrice" column="unit_price"/>
+        <result property="position" column="position"/>
+        <result property="requirement" column="requirement"/>
+    </resultMap>
+
+    <select id="queryProduct" parameterType="String" resultMap="CpProductRecordResult">
+        select c.* , p.product_name, p.wide_head, p.high_head, p.num, p.unit_price, p.position, p.requirement
+        from cp_product_record c
+        left join order_product p on c.order_product_id = p.id
+        where c.cp_record_id = #{id}
+    </select>
+
+
+</mapper>

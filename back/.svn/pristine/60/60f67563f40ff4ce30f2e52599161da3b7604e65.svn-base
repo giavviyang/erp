@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.erp.floor.mapper.sales.ReturnBusinessMapper">
+
+    <resultMap type="ReturnBusiness" id="ReturnBusinessResult">
+        <id property="id" column="id"/>
+        <result property="returnId" column="return_id"/>
+        <result property="returnNo" column="return_no"/>
+        <result property="deliverBusinessId" column="deliver_business_id"/>
+        <result property="productId" column="product_id"/>
+        <result property="returnNum" column="return_num"/>
+        <result property="returnMoney" column="return_money"/>
+        <result property="returnArea" column="return_area"/>
+        <result property="returnWeight" column="return_weight"/>
+        <result property="deliverNo" column="deliver_no"/>
+        <result property="deliverNum" column="deliver_num"/>
+        <result property="deliverAmount" column="deliver_amount"/>
+        <result property="deliverPrice" column="deliver_price"/>
+        <result property="deliverReturnNum" column="deliver_return_num"/>
+        <result property="remarks" column="remarks"/>
+        <result property="productName" column="product_name"/>
+        <result property="wideHead" column="wide_head"/>
+        <result property="highHead" column="high_head"/>
+        <result property="warehousingQuantity" column="warehousing_quantity"/>
+        <result property="num" column="num"/>
+        <result property="unitPrice" column="unit_price"/>
+        <result property="position" column="position"/>
+        <result property="requirement" column="requirement"/>
+        <result property="productArea" column="product_area"/>
+        <result property="productWeight" column="product_weight"/>
+        <result property="productAmount" column="product_amount"/>
+        <result property="lengthen" column="lengthen"/>
+        <result property="singleArea" column="single_area"/>
+        <result property="singleClearingArea" column="single_clearing_area"/>
+        <result property="orderPackNum" column="order_pack_num"/>
+        <result property="orderDeliverNum" column="order_deliver_num"/>
+        <result property="completionNum" column="completion_num"/>
+        <result property="orderNo" column="order_no"/>
+        <result property="customNo" column="custom_no"/>
+        <result property="entryName" column="entry_name"/>
+        <result property="customerName" column="customer_name"/>
+    </resultMap>
+
+    <select id="queryBusiness" parameterType="String" resultMap="ReturnBusinessResult">
+        select
+        rb.* ,
+        p.product_name,
+        p.wide_head,
+        p.high_head,
+        p.warehousing_quantity,
+        p.num,
+        p.unit_price,
+        p.position,
+        p.requirement,
+        p.product_area,
+        p.product_weight,
+        p.product_amount,
+        p.lengthen,
+        p.single_area,
+        p.single_clearing_area,
+        p.order_pack_num,
+        p.order_deliver_num,
+        p.completion_num,
+        r.order_no,
+        r.custom_no,
+        r.entry_name,
+        r.customer_name,
+        d.deliver_no,
+        d.deliver_num,
+        d.deliver_amount,
+        d.deliver_price,
+        d.deliver_return_num
+        from return_business rb
+        left join order_product p on rb.product_id = p.id
+        left join order_record r on r.id = p.order_id
+        left join deliver_business d on rb.deliver_business_id = d.id
+        where rb.return_id = #{id}
+    </select>
+
+    <select id="queryBusinessByIds" parameterType="List" resultMap="ReturnBusinessResult">
+        select
+        rb.* ,
+        p.product_name,
+        p.wide_head,
+        p.high_head,
+        p.warehousing_quantity,
+        p.num,
+        p.unit_price,
+        p.position,
+        p.requirement,
+        p.product_area,
+        p.product_weight,
+        p.product_amount,
+        p.lengthen,
+        p.single_area,
+        p.single_clearing_area,
+        p.order_pack_num,
+        p.order_deliver_num,
+        p.completion_num,
+        r.order_no,
+        r.custom_no,
+        r.entry_name,
+        r.customer_name,
+        d.deliver_no,
+        d.deliver_num,
+        d.deliver_amount,
+        d.deliver_price,
+        d.deliver_return_num
+        from return_business rb
+        left join order_product p on rb.product_id = p.id
+        left join order_record r on r.id = p.order_id
+        left join deliver_business d on rb.deliver_business_id = d.id
+        <where>
+            <if test="array != null">
+                AND rb.return_id in
+                <foreach collection="array" item="ids" open="(" separator="," close=")">
+                    #{ids}
+                </foreach>
+            </if>
+        </where>
+        order by rb.return_no desc
+    </select>
+
+</mapper>

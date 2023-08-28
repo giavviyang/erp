@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.erp.floor.mapper.sales.OutsourcedStockProductMapper">
+
+    <resultMap id="OrderProductResult" type="OutsourcedStockProduct">
+        <id property="id" column="id"/>
+        <result property="outsourcedProductsId" column="outsourced_products_id"/>
+        <result property="outsourcedWarehousingId" column="outsourced_warehousing_id"/>
+        <result property="warehousingNum" column="warehousing_num"/>
+        <result property="outsourcingWorkmanship" column="outsourcing_workmanship"/>
+        <result property="processingRequirements" column="processing_requirements"/>
+        <result property="warehousedNo" column="warehoused_no"/>
+        <result property="orderNo" column="order_no"/>
+        <result property="customNo" column="custom_no"/>
+        <result property="entryName" column="entry_name"/>
+        <result property="customerName" column="customer_name"/>
+        <result property="productName" column="product_name"/>
+        <result property="wideHead" column="wide_head"/>
+        <result property="highHead" column="high_head"/>
+        <result property="position" column="position"/>
+    </resultMap>
+
+    <select id="detailedView" parameterType="String" resultMap="OrderProductResult">
+        select  s.*, p.order_no, p.custom_no, p.entry_name, p.customer_name, p.outsourcing_workmanship, p.processing_requirements
+         , o.product_name, o.wide_head, o.high_head, o.position, w.warehoused_no
+        from outsourced_stock_product s
+        left join outsourced_warehousing w on s.outsourced_warehousing_id = w.warehoused_no
+        left join outsourced_products p on s.outsourced_products_id = p.id
+        left join order_product o on p.product_id = o.id
+        <where>
+            <if test="array != null">
+                AND s.outsourced_warehousing_id in
+                <foreach collection="array" item="ids" open="(" separator="," close=")">
+                    #{ids}
+                </foreach>
+            </if>
+        </where>
+
+    </select>
+
+</mapper>

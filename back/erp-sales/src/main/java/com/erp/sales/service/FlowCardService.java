@@ -1,0 +1,105 @@
+package com.erp.sales.service;
+
+import com.baomidou.mybatisplus.extension.service.IService;
+import com.erp.common.core.domain.AjaxResult;
+import com.erp.common.core.domain.CommonResult;
+import com.erp.floor.pojo.sales.domain.FlowCard;
+import com.erp.floor.pojo.sales.domain.OrderProduct;
+import com.erp.floor.pojo.sales.domain.ProductProcess;
+import com.erp.floor.pojo.sales.domain.ShelfDivisionBusiness;
+import com.erp.floor.pojo.sales.domain.vo.FlowCardVo;
+import com.erp.floor.pojo.sales.domain.vo.FlowParameter;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RequestBody;
+
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * @version 1.0
+ * @author： WangQiMin
+ * @date： 2022-07-28 11:40
+ */
+public interface FlowCardService extends IService<FlowCard> {
+
+    /**
+     * 生成新的流程卡编号
+     * @param oldFlowNumber
+     */
+    String generateFlowNumber(String oldFlowNumber);
+
+    /**
+     * 流程卡查询
+     * @param flowCardVo 流程卡查询实体类
+     */
+    CommonResult<List<FlowCard>> queryList(@RequestBody FlowCardVo flowCardVo);
+
+    /**
+     * 查询流程卡明细
+     * @param flowId 流程卡id
+     */
+    CommonResult<List<ShelfDivisionBusiness>> queryFlowDetailed (String flowId);
+
+    /**
+     * 自然分架
+     * @param flowParameter 产品集合 yu 参数对象
+     */
+    CommonResult<List<FlowCard>> automaticShelf(FlowParameter flowParameter);
+
+
+    /**
+     * 手动分架-保存分架信息
+     * @param processList 已分架信息
+     */
+    CommonResult saveSemiProduct(@RequestBody List<Map<String, Object>> processList);
+
+    /**
+     * 编辑流程卡-查询产品的分架信息
+     * @param flowId 流程卡id
+     */
+    CommonResult<Map<String, Object>> updateQuery(String flowId);
+
+    /**
+     * 编辑流程卡   ---   保存编辑后的数据
+     * @param processMap
+     */
+    CommonResult saveUpdate(@RequestBody Map<String, Object> processMap);
+
+    /**
+     * 删除流程卡
+     * @param id 流程卡id
+     */
+    CommonResult delFlowCard(String id);
+
+    /**
+     * 校验流程卡状态
+     * @param id 流程卡id
+     */
+    CommonResult checkFlowCard(String id);
+
+    /**
+     * 导出流程卡明细
+     * @param ids 流程卡id集合
+     */
+    void exportFlowDetailed(HttpServletResponse response, String ids);
+
+    /**
+     * 导出流程卡
+     * @param ids 流程卡id集合
+     */
+    void exportFlow(HttpServletResponse response, String ids);
+
+    /**
+     * 导出迪赛模板
+     * @param id 流程卡id
+     */
+    void exportMachineFlow(HttpServletResponse response, String id);
+
+    /**
+     * 导出迪赛模板
+     * @param id 流程卡id
+     */
+    void exportOptima(HttpServletResponse response, String id);
+}

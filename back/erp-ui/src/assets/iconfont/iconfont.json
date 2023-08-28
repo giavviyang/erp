@@ -1,0 +1,107 @@
+{
+  "id": "3565604",
+  "name": "洛阳ERP",
+  "font_family": "iconfont",
+  "css_prefix_text": "icon-",
+  "description": "",
+  "glyphs": [
+    {
+      "icon_id": "1614437",
+      "name": "出入库记录",
+      "font_class": "churukujilu",
+      "unicode": "e61e",
+      "unicode_decimal": 58910
+    },
+    {
+      "icon_id": "3703010",
+      "name": "库存盘点单",
+      "font_class": "navicon-kcpdd",
+      "unicode": "e65f",
+      "unicode_decimal": 58975
+    },
+    {
+      "icon_id": "11111000",
+      "name": "出库",
+      "font_class": "chuku",
+      "unicode": "e67d",
+      "unicode_decimal": 59005
+    },
+    {
+      "icon_id": "11111007",
+      "name": "盘点",
+      "font_class": "pandian",
+      "unicode": "e67f",
+      "unicode_decimal": 59007
+    },
+    {
+      "icon_id": "1119362",
+      "name": "入库",
+      "font_class": "ruku",
+      "unicode": "e60f",
+      "unicode_decimal": 58895
+    },
+    {
+      "icon_id": "11111014",
+      "name": "入库",
+      "font_class": "ruku1",
+      "unicode": "e680",
+      "unicode_decimal": 59008
+    },
+    {
+      "icon_id": "14476544",
+      "name": "导出文件",
+      "font_class": "daochuwenjian",
+      "unicode": "e670",
+      "unicode_decimal": 58992
+    },
+    {
+      "icon_id": "7551988",
+      "name": "退货单管理",
+      "font_class": "RectangleCopy",
+      "unicode": "e6be",
+      "unicode_decimal": 59070
+    },
+    {
+      "icon_id": "4320354",
+      "name": "通过",
+      "font_class": "tongguo",
+      "unicode": "e65b",
+      "unicode_decimal": 58971
+    },
+    {
+      "icon_id": "629364",
+      "name": "完成",
+      "font_class": "wancheng",
+      "unicode": "e654",
+      "unicode_decimal": 58964
+    },
+    {
+      "icon_id": "2078812",
+      "name": "dkw_完成",
+      "font_class": "dkw_wancheng",
+      "unicode": "e605",
+      "unicode_decimal": 58885
+    },
+    {
+      "icon_id": "5306518",
+      "name": "未完成",
+      "font_class": "weiwancheng",
+      "unicode": "e663",
+      "unicode_decimal": 58979
+    },
+    {
+      "icon_id": "5756457",
+      "name": "完成（线）",
+      "font_class": "wanchengxian",
+      "unicode": "e622",
+      "unicode_decimal": 58914
+    },
+    {
+      "icon_id": "16979314",
+      "name": "未完成",
+      "font_class": "weiwancheng1",
+      "unicode": "e64d",
+      "unicode_decimal": 58957
+    }
+  ]
+}

@@ -1,0 +1,1192 @@
+<template>
+  <div class="app-container-padding">
+    <el-form :model="queryParams" ref="queryForm" size="mini" :inline="true" class="iptAndBtn">
+      <el-form-item label="退货日期" class="daterange">
+        <el-date-picker
+          v-model="returnDateRange"
+          type="daterange"
+          range-separator="至"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
+          value-format="yyyy-MM-dd" @change="handleQuery">
+        </el-date-picker>
+      </el-form-item>
+      <!--      <el-form-item>-->
+      <el-button type="primary" icon="el-icon-search" size="mini" @click="handleQuery">搜索</el-button>
+      <el-button icon="el-icon-refresh" size="mini" @click="resetQuery">重置</el-button>
+      <!--      </el-form-item>-->
+    </el-form>
+    <div class="btn">
+      <el-button
+        type="primary"
+        icon="el-icon-s-order"
+        size="mini"
+        @click="handleDetails"
+        v-hasPermi="['sales:return:reviewDetailed']">查看明细
+      </el-button>
+      <el-button
+        type="primary"
+        icon="el-icon-plus"
+        size="mini"
+        @click="handleAdd"
+        v-hasPermi="['sales:return:addReturnData']">新增退货
+      </el-button>
+      <el-button
+        type="primary"
+        icon="el-icon-edit"
+        size="mini"
+        @click="handleUpdate"
+        v-hasPermi="['sales:return:updateReturnData']">编辑退货
+      </el-button>
+      <el-button
+        type="primary"
+        icon="el-icon-delete"
+        size="mini"
+        @click="handleDelete"
+        v-hasPermi="['sales:return:delReturnData']">删除退货
+      </el-button>
+      <el-button
+        type="primary"
+        icon="el-icon-document-checked"
+        size="mini"
+        @click="handleCheck"
+        v-hasPermi="['sales:return:examineReturnData']">退货审核
+      </el-button>
+      <el-button
+        type="primary"
+        icon="el-icon-document-delete"
+        size="mini"
+        @click="handleRemoveCheck"
+        v-hasPermi="['sales:return:cancelExamine']">退货消审
+      </el-button>
+      <el-button
+        type="primary"
+        icon="el-icon-printer"
+        size="mini"
+        @click="handlePrint"
+        v-hasPermi="['sales:return:print']">打印
+      </el-button>
+      <el-dropdown>
+        <el-button type="primary" size="mini" v-hasPermi="['sales:return:exportReturnDetailed']">
+          <i class="iconfont icon-daochuwenjian"></i>导出<i class="el-icon-arrow-down el-icon--right"></i>
+        </el-button>
+        <el-dropdown-menu slot="dropdown">
+          <el-dropdown-item @click.native="handleExport(0)"><i class="iconfont icon-daochuwenjian"></i>导出退货单</el-dropdown-item>
+          <el-dropdown-item @click.native="handleExport(1)"><i class="iconfont icon-daochuwenjian"></i>导出退货单明细</el-dropdown-item>
+        </el-dropdown-menu>
+      </el-dropdown>
+    </div>
+    <count-table class="returnTable" @handleChange="handleChange" :pageSize="pageSize" :pageNum="pageNum"
+                 :total="total" :summation="summation">
+      <el-table highlight-current-row
+        :data="returnList"
+        stripe
+        border
+        style="width: 100%"
+        height="100%"
+        ref="multipleTable"
+        @selection-change="handleSelectionChange"
+        @row-click="handleRowClick"
+        slot="table">
+        <el-table-column
+          type="selection"
+          width="55">
+        </el-table-column>
+        <el-table-column
+          :index="getIndex"
+          type="index"
+          label="序号"
+          width="55" show-overflow-tooltip>
+        </el-table-column>
+        <el-table-column
+          v-for="(item,index) in returnColumns"
+          :key="index"
+          :label="item.label"
+          :prop="item.prop"
+          :min-width="item.width"
+          show-overflow-tooltip>
+          <el-table-column :prop="item.prop" show-overflow-tooltip min-width="100" :min-width="item.width">
+            <template #header scoped-slot="scope">
+              <!--可根据类型来显示为搜索框、下拉框等-->
+              <el-input
+                v-model="queryParams[item.prop]"
+                size="mini"
+                placeholder="请输入"
+                v-if="item.type==='ipt'"
+                clearable @keyup.enter.native="handleQuery"/>
+              <el-select v-if="item.type=='select'" v-model="queryParams[item.prop]" placeholder='请选择' clearable
+                         size="mini" @change="handleQuery">
+                <el-option
+                  v-for="orderItem in returnStatusOptions"
+                  :key="orderItem.value"
+                  :label="orderItem.label"
+                  :value="orderItem.value">
+                </el-option>
+              </el-select>
+            </template>
+            <template slot-scope="scope">
+              <template v-if="item.prop.includes('examineStarts')">
+                <span v-show="scope.row[item.prop]==0">审核通过</span>
+                <span v-show="scope.row[item.prop]==1">审核未通过</span>
+                <span v-show="scope.row[item.prop]==2">未审核</span>
+              </template>
+              <template v-if="!item.prop.includes('examineStarts')">
+                {{ scope.row[item.prop] }}
+              </template>
+            </template>
+          </el-table-column>
+        </el-table-column>
+      </el-table>
+    </count-table>
+    <!--  查看明细弹窗  -->
+    <el-dialog title="查看明细"
+               :visible.sync="detailDialog" width="90%" class="dialog-style detailDialog"
+               :close-on-click-modal="false"  :close-on-press-escape="false" :destroy-on-close="true">
+      <div class="detailsInfo">
+        <p v-for="(item,index) in detailsInfo" :key="index">{{ item.title }}：<span>{{ item.value }}</span></p>
+      </div>
+      <slot-table class="detailsTable">
+        <el-table highlight-current-row
+          :data="detailDialogData"
+          border
+          stripe
+          height="100%"
+          style="width: 100%" slot="table">
+          <el-table-column
+            type="index"
+            label="序号"
+            width="50">
+          </el-table-column>
+          <el-table-column
+            v-for="(item,index) in detailDialogColumns"
+            :key="index"
+            :prop="item.prop"
+            :label="item.label"
+            :min-width="item.width"
+            show-overflow-tooltip></el-table-column>
+        </el-table>
+      </slot-table>
+      <!--      <span slot="footer" class="dialog-footer" v-if="returnDialogType==='check'">-->
+      <!--        <el-button type="primary" size="mini">审核通过</el-button>-->
+      <!--         <el-button size="mini">审核不通过</el-button>-->
+      <!--      </span>-->
+    </el-dialog>
+    <!--  新增、编辑退货  -->
+    <el-dialog :title="returnDialogType=='add'?'新增退货':returnDialogType=='edit'?'编辑退货':''"
+               :visible.sync="returnDialog" width="90%" class="dialog-style publicAddDialog"
+               :close-on-click-modal="false"  :close-on-press-escape="false" :destroy-on-close="true">
+      <div class="addInfo">
+        <p class="title">退货信息</p>
+        <div class="addInfoContainer">
+          <el-form :model="returnInfo" size="mini" :inline="true" ref="ruleForm" class="ipt2">
+            <el-form-item label="退货号">
+              <el-input v-model="returnInfo.returnNo" disabled clearable/>
+            </el-form-item>
+            <el-form-item label="退货原因" prop="returnReason">
+              <el-input v-model="returnInfo.returnReason" clearable placeholder="请输入退货原因"/>
+            </el-form-item>
+            <el-form-item label="退货负责人" prop="returnPerson">
+              <el-input v-model="returnInfo.returnPerson" clearable placeholder="请输入退货负责人"/>
+            </el-form-item>
+            <el-form-item label="退货日期" prop="returnDate">
+              <el-date-picker
+                v-model="returnInfo.returnDate"
+                type="datetime"
+                placeholder="选择日期时间"
+                value-format="yyyy-MM-dd HH:mm:ss">
+              </el-date-picker>
+            </el-form-item>
+            <el-form-item label="退货方式" prop="returnMode">
+              <el-select v-model="returnInfo.returnMode" placeholder='请选择退货方式'>
+                <el-option
+                  v-for="item in dict.type.return_mode"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value">
+                </el-option>
+              </el-select>
+            </el-form-item>
+            <el-form-item label="备注" class="remarks" prop="customNo">
+              <el-input v-model="returnInfo.remarks" type="textarea" clearable size="mini" placeholder="请输入内容"/>
+            </el-form-item>
+          </el-form>
+        </div>
+      </div>
+      <div class="btnTable">
+        <div class="btn">
+          <el-button
+            type="primary"
+            icon="el-icon-folder-add"
+            size="mini"
+            @click="handleExportDeliver">导入发货单
+          </el-button>
+          <el-button
+            type="primary"
+            icon="el-icon-folder-remove"
+            size="mini"
+            v-hasPermi="['system:role:add']"
+            @click="handleRemoveDeliver">移除
+          </el-button>
+        </div>
+        <slot-table class="addTable">
+          <el-table highlight-current-row
+            :data="deliverData"
+            border
+            stripe
+            height="100%"
+            style="width: 100%"
+            ref="deliverTable"
+            @selection-change="handleDeliverRemove"
+            @row-click="RowClickDeliverRemove"
+            slot="table">
+            <el-table-column
+              type="selection"
+              width="55">
+            </el-table-column>
+            <el-table-column
+              type="index"
+              label="序号"
+              width="50">
+            </el-table-column>
+            <el-table-column
+              v-for="(item,index) in deliverDataColumns"
+              :key="index"
+              :prop="item.prop"
+              :label="item.label"
+              :min-width="item.width"
+              show-overflow-tooltip></el-table-column>
+            <el-table-column label="本次退货数量（片）" prop="noShelfNum" width="150">
+              <template slot-scope="scope">
+                <el-input-number size="mini" v-model="scope.row.noShelfNum" :min="1"
+                                 :max="Number(scope.row.deliverNum) - Number(scope.row.deliverReturnNum)"
+                                 :precision="0" style="width: 120px"></el-input-number>
+                <!--                <el-input-number size="mini" v-model="scope.row.noShelfNum" :min="1" :max="Number(scope.row.num)-Number(scope.row.shelfNum)" :precision="0"></el-input-number>-->
+              </template>
+            </el-table-column>
+          </el-table>
+        </slot-table>
+      </div>
+      <span slot="footer" class="dialog-footer">
+        <el-button type="primary" size="mini" @click="saveReturn('ruleForm')">保存</el-button>
+         <el-button size="mini" @click="returnDialog=false">取消</el-button>
+      </span>
+    </el-dialog>
+    <!--   导入发货单 -->
+    <el-dialog title="导入发货单" :visible.sync="exportDialog" width="75%" class="dialog-style exportList"
+               :close-on-click-modal="false"  :close-on-press-escape="false" :destroy-on-close="true" append-to-body>
+      <el-form :model="exportParams" size="mini" :inline="true" class="iptAndBtn1">
+        <el-form-item label="发货编号">
+          <el-input @keyup.enter.native="handleDeliver" v-model="exportParams.deliverNo" placeholder="请输入发货编号" clearable/>
+        </el-form-item>
+        <el-form-item label="订单编号">
+          <el-input @keyup.enter.native="handleDeliver" v-model="exportParams.orderNo" placeholder="请输入订单编号" clearable/>
+        </el-form-item>
+        <el-form-item label="客户名称">
+          <el-input @keyup.enter.native="handleDeliver" v-model="exportParams.customerName" placeholder="请输入客户名称" clearable/>
+        </el-form-item>
+        <el-form-item label="自定义编号">
+          <el-input @keyup.enter.native="handleDeliver" v-model="exportParams.customNo" placeholder="请输入自定义编号" clearable/>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" icon="el-icon-search" size="mini" @click="handleDeliver">搜索</el-button>
+        </el-form-item>
+      </el-form>
+      <slot-table class="tableList">
+        <el-table highlight-current-row
+          :data="deliverList"
+          border
+          stripe
+          height="100%"
+          style="width: 100%"
+          ref="deliverListTable"
+          @selection-change="handleDeliverList"
+          @row-click="RowClickDeliverList"
+          slot="table">
+          <el-table-column
+            type="selection"
+            width="55">
+          </el-table-column>
+          <el-table-column
+            type="index"
+            label="序号"
+            width="50">
+          </el-table-column>
+          <el-table-column
+            v-for="item in exportDeliverDataColumns"
+            :key="item.deliverId"
+            :label="item.label"
+            :prop="item.prop"
+            :min-width="item.width"
+            show-overflow-tooltip>
+          </el-table-column>
+        </el-table>
+      </slot-table>
+      <span slot="footer" class="dialog-footer">
+        <el-button type="primary" size="mini" @click="addDeliverList">添加</el-button>
+        <el-button size="mini" @click="backDeliverList">返回</el-button>
+      </span>
+    </el-dialog>
+    <!--  审核  -->
+    <el-dialog title="审核退货" :visible.sync="checkDialog" width="500px" class="dialog-style checkDialog"
+               :close-on-click-modal="false"  :close-on-press-escape="false" :destroy-on-close="true" append-to-body>
+      <el-form :model="checkForm" ref="checkForm" label-width="100px">
+        <el-form-item label="审核" prop="examineStarts">
+          <el-radio-group v-model="checkForm.examineStarts">
+            <el-radio label='0'>通过</el-radio>
+            <el-radio label="1">未通过</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="审核人" prop="examinePerson">
+          <el-input v-model="checkForm.examinePerson" disabled size="mini" placeholder="请输入审核人"></el-input>
+        </el-form-item>
+        <el-form-item label="不通过原因" prop="examineReason" v-if="checkForm.examineStarts==1">
+          <el-input v-model="checkForm.examineReason" type="textarea" size="mini" placeholder="请输入不通过原因"></el-input>
+        </el-form-item>
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+        <el-button type="primary" size="mini" @click="submitCheck('checkForm')">审核</el-button>
+         <el-button size="mini" @click="checkDialog=false">取消</el-button>
+       </span>
+    </el-dialog>
+  </div>
+</template>
+
+<script>
+
+import SlotTable from "@/components/public/table/SlotTable";
+import {Message} from "element-ui";
+import {
+  queryData,
+  productionNumber,
+  queryDeliverData,
+  addReturnData,
+  reviewDetailed,
+  updateReturnData,
+  delReturnData, examineReturnData, cancelExamine
+} from "@/api/salse/returnDeliver";
+import CountTable from "@/components/public/table/countTable";
+import {keepThreeNum, sum} from "@/utils/order/order";
+import {cancelReview, delDeliver, reviewDeliver} from "@/api/salse/deliver";
+
+export default {
+  dicts: ['return_mode'],
+  name: "index",
+  components: {CountTable, SlotTable},
+  data() {
+    return {
+      //查询参数
+      queryParams: {
+        customNo: "",
+        customerName: "",
+        deliverNo: "",
+        entryName: "",
+        id: "",
+        orderNo: "",
+        pageNum: 1,
+        pageSize: 20,
+        productName: "",
+        returnDateEnd: "",
+        returnDateStart: "",
+        returnMode: "",
+        returnNo: "",
+        returnPerson: "",
+        examineStarts:'',
+      },
+      returnDateRange: [], //制单日期范围
+      pageSize: 20,
+      pageNum: 1,
+      total: 0,
+      returnStatusOptions: [
+        {
+          value: 0,
+          label: '审核通过'
+        },
+        {
+          value: 1,
+          label: '审核未通过'
+        },
+        {
+          value: 2,
+          label: '未审核'
+        },
+      ],
+      summation: [
+        {label: 'returnNum', title: '退货数量', value: 0, unit: '片'},
+        {label: 'returnAmount', title: '退货金额', value: 0, unit: '元'},
+      ],
+      returnList: [],  //退货列表
+      //退货表头
+      returnColumns: [
+        {label: '退货编号', prop: 'returnNo', width: '150', type: 'ipt'},
+        {label: '审核状态', prop: 'examineStarts', width: '100', type: 'select'},
+        {label: '发货编号', prop: 'deliverNo', width: '150', type: 'ipt'},
+        {label: '订单编号', prop: 'orderNo', width: '120', type: 'ipt'},
+        {label: '自定义编号', prop: 'customNo', width: '100', type: 'ipt'},
+        {label: '客户名称', prop: 'customerName', width: '120', type: 'ipt'},
+        {label: '项目名称', prop: 'entryName', width: '180', type: 'ipt'},
+        {label: '产品名称', prop: 'productName', width: '180', type: 'ipt'},
+        {label: '退货方式', prop: 'returnMode', width: '100', type: 'ipt'},
+        {label: '退货数量（片）', prop: 'returnNum', width: '120'},
+        {label: '退货金额（元）', prop: 'returnAmount', width: '120'},
+        {label: '退货原因', prop: 'returnReason', width: '100'},
+        {label: '退货负责人', prop: 'returnPerson', width: '100', type: 'ipt'},
+        {label: '退货时间', prop: 'returnDate', width: '180'},
+        {label: '审核人', prop: 'examinePerson', width: '100'},
+      ],
+      selected: [],
+      detailDialog: false,  //明细弹窗
+      //明细信息
+      detailsInfo: [
+        {title: '退货编号', label: 'returnNo', value: ''},
+        {title: '退货原因', label: 'returnReason', value: ''},
+        {title: '退货日期', label: 'returnDate', value: ''},
+        {title: '退货负责人', label: 'returnPerson', value: ''},
+        {title: '退货方式', label: 'returnMode', value: ''},
+        {title: '备注', label: 'remarks', value: ''},
+      ],
+      detailDialogData: [],  //回收站明细数据
+      //订单明细表头
+      detailDialogColumns: [
+        {label: '发货编号', prop: 'deliverNo', width: '120'},
+        {label: '订单编号', prop: 'orderNo', width: '120'},
+        {label: '自定义编号', prop: 'customNo', width: '120'},
+        {label: '客户名称', prop: 'customerName', width: '120'},
+        {label: '项目名称', prop: 'entryName', width: '200'},
+        {label: '产品名称', prop: 'productName', width: '200'},
+        {label: '宽（mm）', prop: 'wideHead', width: '110'},
+        {label: '高（mm）', prop: 'highHead', width: '110'},
+        {label: '退货数量（片）', prop: 'returnNum', width: '100'},
+        {label: '面积（m²）', prop: 'returnArea', width: '100'},
+        {label: '重量（m²）', prop: 'returnWeight', width: '100'},
+        {label: '发货总金额（元）', prop: 'returnMoney', width: '120'},
+      ],
+      returnDialogType: 'add',  //新增
+      returnDialog: false,  //新增、编辑弹窗
+      returnInfo: {
+        id: '',
+        returnNo: '',
+        returnReason: '',
+        returnPerson: '',
+        returnDate: '',
+        returnMode: '',
+        remarks: '',
+        deliverBusinessList: [],
+        returnBusinesses: []
+      },
+      // 退货时间不能晚于当前时间
+      preparationDateOptions: {
+        disabledDate: time => {
+          return time.getTime() > Date.now()
+        },
+      },
+      deliverData: [],  //发货单表格
+      deliverDataColumns: [
+        {label: '发货编号', prop: 'deliverNo', width: '120'},
+        {label: '订单编号', prop: 'orderNo', width: '120'},
+        {label: '自定义编号', prop: 'customNo', width: '120'},
+        {label: '客户名称', prop: 'customerName', width: '180'},
+        {label: '项目名称', prop: 'entryName', width: '180'},
+        {label: '产品名称', prop: 'productName', width: '200'},
+        {label: '宽（mm）', prop: 'wideHead', width: '100'},
+        {label: '高（mm）', prop: 'highHead', width: '100'},
+        {label: '发货数量（片）', prop: 'deliverNum', width: '120'},
+        {label: '已退货数量（片）', prop: 'deliverReturnNum', width: '120'},
+      ],
+      selectedDeliver: [],  //选择发货单移除
+      exportDialog: false,  //导入发货单弹窗
+      //导入发货单查询条件
+      exportParams: {
+        deliverNo: '',
+        orderNo: '',
+        customNo: '',
+        customerName: '',
+        pageSize: 20,
+        pageNum: 1,
+      },
+      pageSizeDeliver: 20,
+      pageNumDeliver: 1,
+      totalDeliver: 0,
+      deliverList: [], //导入弹窗的发货单数据
+      selectedDeliverList: [],
+      exportDateRange: [],  //导入发货日期范围查询
+      exportDeliverDataColumns: [
+        {label: '发货编号', prop: 'deliverNo', width: '150'},
+        {label: '订单编号', prop: 'orderNo', width: '150'},
+        {label: '自定义编号', prop: 'customNo', width: '120'},
+        {label: '客户名称', prop: 'customerName', width: '120'},
+        {label: '项目名称', prop: 'entryName', width: '180'},
+        {label: '产品名称', prop: 'productName', width: '200'},
+        {label: '宽（mm）', prop: 'wideHead', width: '100'},
+        {label: '高（mm）', prop: 'highHead', width: '100'},
+        {label: '发货数量（片）', prop: 'deliverNum', width: '120'},
+        {label: '已退货数量（片）', prop: 'deliverReturnNum', width: '120'},
+      ],
+      checkDialog: false, //审核
+      checkForm: {
+        id: '',
+        examineStarts: '0',  //审核结果  0 通过  1  不通过
+        examinePerson: '',
+        examineReason: '',
+      },
+      // 表单校验
+      rules: {
+        returnPerson: [
+          {max: 10, message: '字符长度最大不得超过10', trigger: 'blur'}
+        ],
+        returnReason: [
+          {required: true, message: "退货原因不能为空", trigger: "blur"},
+          {max: 125, message: '字符长度最大不得超过125', trigger: 'blur'}
+        ],
+        returnMode: [
+          // {required: true, message: '退货方式不能为空', trigger: ['blur', 'change']},
+          {required: true, message: '退货方式不能为空',  trigger: 'blur'},
+          {max: 20, message: '字符长度最大不得超过20', trigger: 'blur'}
+        ],
+        returnDate: [
+          {required: true, message: "退货日期不能为空", trigger: "blur"}
+        ],
+      },
+      checkRules: {
+        examineStarts: [
+          {required: true, message: '请选择审核结果', trigger: 'change'}
+        ],
+        examinePerson: [
+          {required: true, message: '请输入审核人', trigger: 'change'}
+        ],
+        examineReason: [
+          {required: true, message: '请输入审核不通过原因', trigger: 'change'}
+        ],
+      },
+    }
+  },
+  created() {
+    this.handleQuery();
+  },
+  mounted() {
+    // this.keyupSubmit();
+    var multipleTable = this.$refs.multipleTable.$refs.bodyWrapper
+    multipleTable.addEventListener('scroll', () => {
+      // 滚动距离
+      const scrollLeft = multipleTable.scrollLeft;
+      // this.$refs.multipleTable.$refs.bodyWrapper.scrollLeft = scrollLeft
+      this.$refs.multipleTable.$refs.headerWrapper.scrollLeft = scrollLeft
+    })
+  },
+   methods: {
+
+    //键盘按下enter搜索事件
+    keyupSubmit() {
+      document.onkeydown = e => {
+        const _key = window.event.keyCode
+        if (_key === 13) {
+          this.handleQuery();
+        }
+      }
+    },
+    /* 订单查询 */
+    handleQuery() {
+      if (this.returnDateRange) {
+        this.queryParams.returnDateStart = this.returnDateRange[0];
+        this.queryParams.returnDateEnd = this.returnDateRange[1];
+      }
+      queryData(this.queryParams).then(res => {
+        if (res.code === 200) {
+          this.returnList = res.data;
+          this.total = res.count;
+          if (this.returnList) {
+            this.summation=[
+              {label: 'returnNum', title: '退货数量', value: 0, unit: '片'},
+              {label: 'returnAmount', title: '退货金额', value: 0, unit: '元'},
+            ];
+            this.returnList.forEach(item => {
+               this.summation.forEach(sumItem => {
+
+                if (item.hasOwnProperty(sumItem.label)) {
+                  sumItem.value += item[sumItem.label]
+                }
+                sumItem.value = keepThreeNum(sumItem.value);
+              })
+            })
+          }
+        }
+      })
+    },
+    /* 重置 */
+    resetQuery() {
+      this.returnDateRange = [];   //制单日期范围
+      this.queryParams = {
+        customNo: "",
+        customerName: "",
+        deliverNo: "",
+        entryName: "",
+        id: "",
+        orderNo: "",
+        pageNum: 1,
+        pageSize: 20,
+        productName: "",
+        returnDateEnd: "",
+        returnDateStart: "",
+        returnMode: "",
+        returnNo: "",
+        returnPerson: "",
+      };
+      this.handleQuery();
+    },
+     // 是否显示下拉框
+     isShowSelectOptions(isShowSelectOptions) {
+       if (!isShowSelectOptions) {
+         this.$refs.statusSelect.forEach(item => {
+           item.blur();
+           this.handleQuery();
+         })
+       }
+     },
+    /* 查看明细 */
+    handleDetails() {
+      if (this.selected.length <= 0) {
+        Message.warning("请选择要查看的数据");
+        return false
+      }
+      if (this.selected.length > 1) {
+        Message.warning("请选择一条数据进行查看");
+        return false
+      }
+      if (this.selected.length == 1) {
+        // this.returnDialogType = 'detail';
+        this.detailDialog = true;
+        reviewDetailed({id: this.selected[0].id}).then(res => {
+          this.detailsInfo.forEach(item => {
+            if (res.data.hasOwnProperty(item.label)) {
+              item.value = res.data[item.label]
+            }
+          })
+          this.detailDialogData = res.data.returnBusinesses;
+        })
+      }
+    },
+    /* 新增退货 */
+    handleAdd() {
+      this.returnDialogType = 'add';
+      this.returnDialog = true;
+      this.returnInfo = {
+        id: '',
+        returnNo: '',
+        returnReason: '',
+        returnPerson: localStorage.getItem("nickName"),
+        returnDate: '',
+        returnMode: '',
+        remarks: '',
+        deliverBusinessList: [],
+        returnBusinesses: []
+      };
+      this.deliverData = [];
+      productionNumber().then(res => {
+        this.returnInfo.returnNo = res.msg;
+      })
+    },
+    /* 编辑退货 */
+    handleUpdate() {
+      // console.log(this.selected)
+      if (this.selected.length <= 0) {
+        Message.warning("请选择要修改的数据");
+        return false
+      }
+      if (this.selected.length > 1) {
+        Message.warning("请选择一条数据进行修改");
+        return false
+      }
+      if (this.selected.length == 1) {
+        if (this.selected[0].examineStarts != 2) {
+          Message.warning("退货单已审核，无法继续编辑");
+        } else {
+          this.deliverData = this.detailDialogData;
+          reviewDetailed({id: this.selected[0].id}).then(res => {
+            this.returnInfo = res.data;
+            this.deliverData = res.data.returnBusinesses;
+            this.deliverData.forEach(item => {
+              item.noShelfNum = item.returnNum
+            })
+          })
+          this.returnDialog = true;
+          this.returnDialogType = 'edit';
+        }
+      }
+    },
+    /* 删除退货 */
+    handleDelete() {
+      if (this.selected.length <= 0) {
+        Message.warning("请选择要删除的数据");
+        return false
+      } else {
+        if (this.selected[0].examineStarts != 2) {
+          Message.warning("退货单已审核，无法继续删除");
+        } else {
+          this.$confirm('此操作将删除选中数据，是否继续?', '提示', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning',
+          }).then(() => {
+            let ids = [];
+            this.selected.forEach(item => {
+              ids.push(item.id)
+            })
+            delReturnData({ids: ids.toString()}).then(res => {
+              if (res.code == 200) {
+                this.$message.success(res.msg)
+                this.handleQuery()
+              } else {
+                this.$message.error(res.msg)
+              }
+            })
+          }).catch(() => {
+            this.$message({
+              type: 'info',
+              message: '已取消删除'
+            });
+          });
+        }
+      }
+    },
+    /* 审核退货 */
+    handleCheck() {
+      if (this.selected.length <= 0) {
+        Message.warning("请选择要审核的数据");
+        return false
+      }
+      if (this.selected.length > 1) {
+        Message.warning("请选择一条数据进行审核");
+        return false
+      }
+      if (this.selected.length == 1) {
+        if (this.selected[0].examineStarts != 2) {
+          Message.warning("退货单已审核，无法再次审核");
+        } else {
+          this.checkDialog = true;
+          this.checkForm.examineStarts = '0';
+          this.checkForm.examinePerson = localStorage.getItem("nickName");
+        }
+      }
+    },
+    /* 保存审核 */
+    submitCheck(formName) {
+      this.$refs[formName].validate((valid) => {
+        if (valid) {
+          this.checkForm.id = this.selected[0].id;
+          this.checkDialog = false;
+          examineReturnData(this.checkForm).then(res => {
+            if (res.code === 200) {
+              Message.success(res.msg);
+            } else {
+              Message.warning(res.msg);
+            }
+            this.handleQuery();
+          }).catch(err => {
+            Message.warning(err.msg);
+          })
+        } else {
+          return false;
+        }
+      })
+    },
+    /* 消审 */
+    handleRemoveCheck() {
+      if (this.selected.length <= 0) {
+        Message.warning("请选择要消审的数据");
+        return false
+      }
+      if (this.selected.length > 1) {
+        Message.warning("请选择一条数据进行消审");
+        return false
+      }
+      if (this.selected.length == 1) {
+        if (this.selected[0].examineStarts == 2) {
+          Message.warning("退货单未审核，无法继续消审");
+        } else {
+          this.$confirm('此操作将消除当前审核，是否继续?', '提示', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning',
+          }).then(() => {
+            let ids = [];
+            this.selected.forEach(item => {
+              ids.push(item.id)
+            })
+            cancelExamine({id: this.selected[0].id}).then(res => {
+              if (res.code == 200) {
+                this.$message.success(res.msg)
+
+              } else {
+                this.$message.error(res.msg)
+
+              }
+              this.handleQuery();
+            })
+          }).catch(() => {
+            this.$message({
+              type: 'info',
+              message: '已取消消审'
+            });
+          });
+        }
+      }
+    },
+    /* 导出退货 */
+    //导出
+    handleExport(param) {
+      let ids = [];
+      if (this.selected.length > 0) {
+        this.selected.forEach(item => {
+          ids.push(item.id)
+        })
+      }
+      // console.log(ids.toString())
+      if (param === 0) {//导出退货单
+        this.download('/sales/return/exportReturn', {
+          ids: ids.toString()
+        }, `退货单.xlsx`)
+      } else if (param === 1) {//导出退货单明细
+        this.download('/sales/return/exportReturnDetailed', {
+          ids: ids.toString()
+        }, `退货单明细.xlsx`)
+      }
+    },
+    /* 打印退货 */
+    handlePrint() {
+
+    },
+    /* 翻页后序号连贯 */
+    getIndex($index) {
+      //  表格序号
+      return (this.pageNum - 1) * this.pageSize + $index + 1;
+    },
+    /* 退货复选框 */
+    handleSelectionChange(val) {
+      this.selected = val;
+    },
+    /* 行点击事件 */
+    handleRowClick(row, column, event) {
+      this.$refs.multipleTable.toggleRowSelection(row, column)
+    },
+    /* 分页器 */
+    handleChange(size, num) {
+      this.pageSize = size;
+      this.pageNum = num;
+      this.queryParams.pageNum = this.pageNum;
+      this.queryParams.pageSize = this.pageSize;
+      this.handleQuery();
+    },
+    /* 打开发货单弹窗 */
+    handleExportDeliver() {
+      this.exportDialog = true;
+      this.handleDeliver();
+      // this.keyupDeliverSubmit();
+    },
+    /* 移除发货单 */
+    handleRemoveDeliver() {
+      if (this.deliverData.length <= 0) {
+        Message.warning("请先导入发货单");
+      } else {
+        if (this.selectedDeliver.length <= 0) {
+          Message.warning("请选择需要移除的数据");
+        } else {
+          this.selectedDeliver.forEach(item => {
+            for (let i = this.deliverData.length - 1; i >= 0; i--) {
+              if (item.id === this.deliverData[i].id) {
+                this.deliverData.splice(i, 1)
+              }
+            }
+          })
+        }
+      }
+    },
+    /* 选择发货单复选框移除 */
+    handleDeliverRemove(val) {
+      this.selectedDeliver = val;
+    },
+    /* 发货单移除行点击事件 */
+    RowClickDeliverRemove(row, column, event) {
+      this.$refs.deliverTable.toggleRowSelection(row, column)
+    },
+    /* 生成uuid */
+    generateUUID() {
+      var d = new Date().getTime();
+      if (window.performance && typeof window.performance.now === "function") {
+        d += performance.now(); //use high-precision timer if available
+      }
+      var uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+        var r = (d + Math.random() * 16) % 16 | 0;
+        d = Math.floor(d / 16);
+        return (c == 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+      });
+      return uuid;
+    },
+    /* 保存退货 */
+    saveReturn(formName) {
+      this.$refs[formName].validate((valid) => {
+        if (valid) {
+          console.log(this.returnInfo)
+          if (this.deliverData.length <= 0) {
+            Message.warning("请导入发货单进行退货");
+          } else {
+            if (this.returnDialogType == 'add') {
+              this.returnInfo.deliverBusinessList = this.deliverData
+              this.returnInfo.id = this.generateUUID();
+              addReturnData(this.returnInfo).then(res => {
+                if (res.code == 200) {
+                  Message.success(res.msg)
+                  this.returnDialog = false
+                  this.handleQuery();
+                } else {
+                  Message.error(res.msg)
+                }
+              })
+              return false
+            }
+            if (this.returnDialogType == 'edit') {
+              this.returnInfo.returnBusinesses = this.deliverData
+              updateReturnData(this.returnInfo).then(res => {
+                if (res.code == 200) {
+                  Message.success(res.msg)
+                  this.returnDialog = false
+                  this.handleQuery();
+                } else {
+                  Message.error(res.msg)
+                }
+              })
+              return false
+            }
+          }
+        } else {
+          return false;
+        }
+      })
+    },
+    // /* 键盘查询事件 */
+    // keyupDeliverSubmit() {
+    //   document.onkeydown = e => {
+    //     const _key = window.event.keyCode
+    //     if (_key === 13) {
+    //       this.handleDeliver();
+    //     }
+    //   }
+    // },
+    /* 导入发货单查询 */
+    handleDeliver() {
+      // let ids = [];
+      // this.deliverData.forEach(item => {
+      //   ids.push(item.id)
+      // })
+      // this.exportParams.id = ids.toString();
+      // console.log('this.exportParams',this.exportParams)
+      queryDeliverData(this.exportParams).then(res => {
+        this.deliverList = res.data;
+      })
+    },
+    // /* 发货单 翻页后序号连贯 */
+    // getDeliverIndex($index) {
+    //   //  表格序号
+    //   return (this.pageNumDeliver - 1) * this.pageSizeDeliver + $index + 1;
+    // },
+    /* 选择导入发货单数据 */
+    handleDeliverList(val) {
+      this.selectedDeliverList = val;
+    },
+    /* 导入发货单行点击事件 */
+    RowClickDeliverList(row, column, event) {
+      this.$refs.deliverListTable.toggleRowSelection(row, column)
+    },
+    /* 添加导入发货单 */
+    addDeliverList() {
+      // console.log(this.selectedDeliverList)
+      if (this.selectedDeliverList.length <= 0) {
+        Message.warning("请选择要添加的数据");
+      } else {
+        let obj = {};
+        this.selectedDeliverList.forEach(item => {
+          item.noShelfNum = 1;
+          let key = item.customerName;
+          obj[key] = 1;
+        })
+        let keys = Object.keys(obj)
+        if (keys.length !== 1) {
+          Message.warning("请选择相同客户的订单");
+        } else {
+          for (let i = 0; i < this.selectedDeliverList.length; i++) {
+            var index = this.deliverList.indexOf(this.selectedDeliverList[i]);
+            for (let j = 0; j < this.deliverData.length; j++) {
+              if (this.selectedDeliverList[i].id == this.deliverData[j].id) {
+                Message.warning("序号为" + (index + 1) + "的数据已经添加,不可重复添加！");
+                return;
+              }
+              if (this.selectedDeliverList[i].customerName != this.deliverData[j].customerName){
+                Message.warning("请选择相同客户的发货单！");
+                return;
+              }
+            }
+          }
+          this.deliverData.push(...this.selectedDeliverList);
+          Message.success("添加成功！");
+          this.$refs.deliverListTable.clearSelection();
+        }
+      }
+    },
+    /* 取消导入发货单 */
+    backDeliverList() {
+      this.exportDialog = false;
+      this.$refs.deliverListTable.clearSelection();
+    },
+  }
+}
+</script>
+
+<style lang="scss" scoped>
+.returnTable {
+  height: calc(100% - 100px);
+}
+
+::v-deep .detailDialog {
+  .el-dialog {
+    height: calc(60vh);
+
+    .el-dialog__body {
+      //height: calc(100% - 90px);
+      padding: 0;
+
+      .detailsInfo {
+        justify-content: flex-start;
+        margin-bottom: 0;
+
+        p {
+          min-width: 310px;
+        }
+      }
+
+      .detailsTable {
+        height: calc(100% - 120px);
+      }
+    }
+  }
+}
+
+.checkDialog {
+  ::v-deep .el-dialog {
+    min-height: 5%;
+  }
+}
+
+/*::v-deep .publicAddDialog {
+  .el-dialog {
+    height: calc(70vh);
+    overflow: auto;
+
+    .el-dialog__body {
+      height: calc(100% - 90px);
+      display: flex;
+      flex-direction: column;
+
+
+      .addInfo {
+        max-height: 200px;
+        min-height: 100px;
+        border-radius: 15px;
+        box-shadow: 0 1px 5px 0 rgba(0, 0, 0, 0.3);
+        //margin-bottom: 10px;
+
+        .title {
+          height: 30px;
+          padding-left: 40px;
+          margin-bottom: 0 !important;
+        }
+
+        .addInfoContainer {
+          height: calc(100% - 30px);
+          flex-grow: 1;
+          overflow: auto;
+          background: rgba(100, 200, 188, 0.05);
+          border: 1px solid rgba(100, 200, 188, 0.5);
+          border-bottom-left-radius: 15px;
+          border-bottom-right-radius: 15px;
+
+          .el-form-item {
+            width: 380px;
+          }
+
+          .remarks {
+            width: 760px;
+          }
+
+        }
+      }
+
+      .btnTable {
+        //height: 50px;
+        flex-grow: 1;
+        min-height: 220px;
+
+        .addTable {
+
+          height: calc(100% - 48px);
+
+          .table {
+            height: 100%;
+            border-right: 1px solid #dfe6ec;
+          }
+
+          .page {
+            display: none;
+          }
+        }
+      }
+    }
+
+  }
+
+}*/
+
+/*.exportList {
+ .el-dialog {
+    height: calc(65vh);
+    .el-dialog__body {
+      height: calc(100% - 90px);
+      .iptAndBtn1{
+        background-color: #f6f6f6;
+        height: 80px;
+        overflow: auto;
+        padding: 5px;
+        box-sizing: content-box;
+        margin-bottom: 10px;
+        .el-form-item{
+          width: 430px;
+          margin-bottom: 10px;
+          .el-form-item__label{
+            width: 100px;
+          }
+          .el-form-item__content{
+            width:280px;
+            .el-range-editor{
+              width: 280px;
+              .el-range-input:last-of-type{
+                margin-left: 5px;
+              }
+            }
+          }
+          .el-button{
+            margin-left: 30px;
+          }
+        }
+      }
+      .deliverList {
+        height: calc(100% - 100px);
+        min-height: 150px;
+        .table{
+          height: 100%;
+        }
+        .page{
+          display: none;
+        }
+      }
+    }
+  }
+}*/
+
+</style>

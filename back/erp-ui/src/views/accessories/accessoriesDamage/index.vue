@@ -1,0 +1,606 @@
+<template>
+  <div class="app-container-padding">
+    <el-form :model="queryParams" ref="queryForm" size="mini" :inline="true" class="iptAndBtn">
+      <el-form-item label="报损日期" class="daterange">
+        <el-date-picker
+          v-model="damageDateRange"
+          type="daterange"
+          range-separator="至"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
+          value-format="yyyy-MM-dd"
+          @change="handleQuery">
+        </el-date-picker>
+      </el-form-item>
+      <el-form-item label="报损单号" prop="damageNo">
+        <el-input
+          v-model="queryParams.damageNo"
+          placeholder="请输入报损单号"
+          @keyup.enter.native="handleQuery"
+          clearable/>
+      </el-form-item>
+      <el-form-item label="报损原因" prop="reason">
+        <el-input
+          v-model="queryParams.reason"
+          placeholder="请输入报损原因"
+          @keyup.enter.native="handleQuery"
+          clearable/>
+      </el-form-item>
+      <el-button type="primary" icon="el-icon-search" size="mini" @click="handleQuery">搜索</el-button>
+    </el-form>
+    <div class="btn">
+      <el-button
+        type="primary"
+        icon="el-icon-s-order"
+        size="mini"
+        @click="handleDetails"
+        v-hasPermi="['accessories:damage:detail']"
+      >查看明细
+      </el-button>
+      <el-button
+        type="primary"
+        icon="el-icon-plus"
+        size="mini"
+        @click="handleAdd"
+        v-hasPermi="['accessories:damage:add']"
+      >新增报损
+      </el-button>
+      <el-button
+        type="primary"
+        icon="el-icon-edit"
+        size="mini"
+        @click="handleUpdate"
+        v-hasPermi="['accessories:damage:edit']"
+      >编辑报损
+      </el-button>
+      <el-button
+        type="primary"
+        icon="el-icon-delete"
+        size="mini"
+        @click="handleDelete"
+        v-hasPermi="['accessories:damage:del']">删除报损
+      </el-button>
+      <el-button
+        type="primary"
+        icon="el-icon-printer"
+        size="mini"
+        v-hasPermi="['accessories:damage:prinal']"
+        @click="handlePrint">打印
+      </el-button>
+      <el-dropdown>
+        <el-button type="primary" size="mini" v-hasPermi="['accessories:damage:exportDamageDetails']">
+          <i class="iconfont icon-daochuwenjian"></i>导出<i class="el-icon-arrow-down el-icon--right"></i>
+        </el-button>
+        <el-dropdown-menu slot="dropdown">
+          <el-dropdown-item @click.native="handleExport(0)"><i class="iconfont icon-daochuwenjian" ></i>导出报损单</el-dropdown-item>
+          <el-dropdown-item @click.native="handleExport(1)"><i class="iconfont icon-daochuwenjian" ></i>导出报损单明细</el-dropdown-item>
+        </el-dropdown-menu>
+      </el-dropdown>
+
+    </div>
+    <count-table class="rightTable" @handleChange="handleChange" :pageSize="queryParams.pageSize"
+                 :pageNum="queryParams.pageNum" :total="queryParams.count" :summation="summation">
+      <el-table highlight-current-row
+        :data="tableDate"
+        stripe
+        border
+        height="100%"
+        ref="templateTableRef"
+        @selection-change="handleSelectionChange"
+        @row-click="handleRowClick" slot="table">
+        <el-table-column
+          type="selection"
+          width="55">
+        </el-table-column>
+        <el-table-column
+          type="index"
+          label="序号"
+          width="55" show-overflow-tooltip>
+        </el-table-column>
+        <el-table-column
+          show-overflow-tooltip
+          v-for="(item,index) in tableColumn"
+          :key="index"
+          :prop="item.prop"
+          :label="item.label"
+          :min-width="item.width">
+        </el-table-column>
+      </el-table>
+    </count-table>
+    <!--  查看明细弹窗  -->
+    <el-dialog title='查看明细'
+               :visible.sync="detailDialog" width="80%" class="dialog-style detailDialog"
+               :close-on-click-modal="false"  :close-on-press-escape="false" :destroy-on-close="true">
+      <div class="detailsInfo">
+        <p v-for="(item,index) in detailsInfo" :key="index">{{ item.title }}：<span>{{ item.value }}</span></p>
+      </div>
+      <slot-table class="detailsTable">
+        <el-table highlight-current-row
+          :data="detailDialogData"
+          border
+          stripe
+          height="100%"
+          style="width: 100%" slot="table">
+          <el-table-column
+            type="index"
+            label="序号"
+            width="50">
+          </el-table-column>
+          <el-table-column
+            v-for="(item,index) in detailDialogColumns"
+            :key="index"
+            :prop="item.prop"
+            :label="item.label"
+            :min-width="item.width"
+            show-overflow-tooltip></el-table-column>
+        </el-table>
+      </slot-table>
+    </el-dialog>
+    <!--  新增报损  -->
+    <el-dialog :title="dialogType==='add'?'新增报损':dialogType==='edit'?'编辑报损':''"
+               :visible.sync="addDialog" width="90%" class="dialog-style publicAddDialog"
+               :close-on-click-modal="false"  :close-on-press-escape="false" :destroy-on-close="true">
+      <div class="addInfo">
+        <p class="title1">报损信息</p>
+        <div class="addInfoContainer">
+      <el-form :model="addParams" ref="addForm" size="mini" :inline="true" class="ipt2" >
+        <el-form-item label="报损单号" prop="damageNo">
+          <el-input
+            v-model="addParams.damageNo"
+            placeholder="请输入报损单号"
+            clearable/>
+        </el-form-item>
+        <el-form-item label="报损人" prop="person">
+          <el-input
+            v-model="addParams.person"
+            placeholder="请输入报损人"
+            clearable/>
+        </el-form-item>
+        <el-form-item label="报损原因" prop="reason">
+          <el-input
+            v-model="addParams.reason"
+            placeholder="请输入报损原因"
+            clearable/>
+        </el-form-item>
+        <el-form-item label="报损日期" prop="damageDate">
+          <el-date-picker
+            v-model="addParams.damageDate"
+            type="datetime"
+            placeholder="选择日期时间"
+            value-format="yyyy-MM-dd HH:mm:ss">
+          </el-date-picker>
+        </el-form-item>
+        <el-form-item label="备注" prop="remarks" class="remarks">
+          <el-input
+            type="textarea"
+            v-model="addParams.remarks" size="mini" clearable  placeholder="请输入内容">
+          </el-input>
+        </el-form-item>
+      </el-form>
+        </div>
+      </div>
+      <div class="btnTable">
+        <div class="btn">
+          <el-button
+            type="primary"
+            icon="el-icon-folder-add"
+            size="mini"
+            @click="handleExportProduct">导入辅料
+          </el-button>
+        </div>
+        <slot-table class="addTable">
+          <el-table highlight-current-row
+            :data="accessoriesList"
+            border
+            stripe
+            height="100%"
+            style="width: 100%"
+            ref="productTable"
+            slot="table">
+            <!--            <el-table-column-->
+            <!--              type="selection"-->
+            <!--              width="55">-->
+            <!--            </el-table-column>-->
+            <el-table-column
+              type="index"
+              label="序号"
+              width="50">
+            </el-table-column>
+            <el-table-column
+              v-for="(item,index) in addAccessoriesColumns"
+              :key="index"
+              :prop="item.prop"
+              :label="item.label"
+              :min-width="item.width"
+              show-overflow-tooltip></el-table-column>
+            <el-table-column label="报损单价" width="200">
+              <template slot-scope="scope">
+                <el-input-number size="mini" v-model="scope.row.referencePrice" :min="1"></el-input-number>
+              </template>
+            </el-table-column>
+            <el-table-column label="报损数量" width="200">
+              <template slot-scope="scope">
+                <el-input-number size="mini" v-model="scope.row.operationNum" :min="1" :precision="0" :max="Number(scope.row.stock)"></el-input-number>
+              </template>
+            </el-table-column>
+            <el-table-column
+              label="操作"
+              width="120" class-name="operation">
+              <template slot-scope="scope">
+                <el-button
+                  @click.native.prevent="deleteRow(scope.$index, accessoriesList)"
+                  type="text"
+                  size="mini">
+                  移除
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </slot-table>
+      </div>
+
+      <span slot="footer" class="dialog-footer">
+        <el-button type="primary" size="mini" @click="saveAdd('addForm')">保存</el-button>
+        <el-button size="mini" @click="addDialog=false">取消</el-button>
+      </span>
+    </el-dialog>
+    <!--  选择辅料  -->
+    <accessories-dialog :selectAccessoriesDialog="selectAccessoriesDialog"
+                     ref="accessoriesDialog" @saveSelectAccessories="saveSelectAccessories"
+                     @cancelSelectAccessories="cancelSelectAccessories" class="accessoriesDialog"></accessories-dialog>
+  </div>
+</template>
+
+<script>
+
+import SlotTable from "@/components/public/table/SlotTable";
+import {Message} from "element-ui";
+import CountTable from "@/components/public/table/countTable";
+import AccessoriesDialog from "@/views/accessories/components/accessoriesDialog";
+import {keepOneNum, keepThreeNum, getCurrentDay} from "@/utils/order/order";
+import {queryDamageData,productionNumber, addDamageData, viewDetail, updDamageDataQuery, updDamageData, delDamageData} from "@/api/accessories/accessoriesDamage";
+
+export default {
+  name: "index",
+  components: {AccessoriesDialog, CountTable, SlotTable},
+  data() {
+    return {
+      queryParams: {
+        damageDateEnd: '',
+        damageDateStart: '',
+        damageNo: '',
+        reason: '',
+        pageNum: 1,
+        pageSize: 20,
+      },
+      damageDateRange: [],
+      selected: [],
+      tableDate: [],
+      tableColumn: [
+        {label: '报损单号', prop: 'damageNo', width: '120'},
+        {label: '报损原因', prop: 'reason', width: '120'},
+        {label: '报损日期', prop: 'damageDate', width: '180'},
+        {label: '报损人', prop: 'person', width: '100'},
+        {label: '总数量', prop: 'damageNum', width: '120'},
+        {label: '总金额（元）', prop: 'damageAmount', width: '120'},
+        {label: '备注', prop: 'remarks', width: '100'},
+      ],
+      //总合计
+      summation: [
+        {label: 'damageNum', title: '报损总数量', value: 0},
+        {label: 'damageAmount', title: '报损总金额', value: 0, unit: '元'},
+      ],
+      detailDialog: false,
+      detailsInfo: [
+        {title: '报损单号', value: ''},
+        {title: '报损原因', value: ''},
+        {title: '报损时间', value: ''},
+        {title: '报损人', value: ''},
+        {title: '总数量', value: ''},
+        {title: '总金额（元）', value: ''},
+        {title: '备注', value: ''},
+      ],  //明细
+      detailDialogData: [],
+      detailDialogColumns: [
+        {label: '辅料名称', prop: 'accessoriesName', width: '120'},
+        {label: '计数单位', prop: 'accessoriesCompany', width: '80'},
+        {label: '型号规格', prop: 'accessoriesSpecifications', width: '100'},
+        {label: '厂家名称', prop: 'accessoriesMill', width: '150'},
+        {label: '辅料类型', prop: 'typeName', width: '120'},
+        {label: '报损数量', prop: 'damageNum', width: '120'},
+      ],
+      dialogType:'add',
+      addDialog: false, //新增报损
+      addParams: {
+        damageNo: '',
+        damageDate: getCurrentDay(),
+        reason: '',
+        person: '',
+        remarks:'',
+        accessoriesList:[]
+      },
+      accessoriesList:[],
+      addAccessoriesColumns:[
+        {label: '辅料名称', prop: 'accessoriesName', width: '120'},
+        {label: '辅料编号', prop: 'accessoriesNo', width: '120'},
+        {label: '型号规格', prop: 'accessoriesSpecifications', width: '100'},
+       {label: '计数单位', prop: 'accessoriesCompany', width: '80'},
+        {label: '厂家名称', prop: 'accessoriesMill', width: '150'},
+        {label: '辅料类型', prop: 'typeName', width: '120'},
+        {label: '库存数量', prop: 'stock', width: '120'},
+      ],
+      selectAccessoriesDialog: false,
+      addFormRules: {
+        damageNo: [
+          {required: true, message: '请输入报损原因', trigger: 'blur'},
+          {min: 2, max: 20, message: "长度在 2 到 20 个字符", trigger: "blur"},
+        ],
+        reason: [
+          {required: true, message: '请输入报损原因', trigger: 'blur'},
+          {min: 2, max: 20, message: "长度在 2 到 20 个字符", trigger: "blur"},
+        ],
+        damageDate: [
+          {required: true, message: '报损日期不能为空', trigger: 'blur'}
+        ]
+      },
+    }
+  },
+  created() {
+    this.handleQuery();
+  },
+   methods: {
+
+    /* 查询报损单 */
+    handleQuery() {
+      if (this.damageDateRange) {
+        this.queryParams.damageDateStart = this.damageDateRange[0];
+        this.queryParams.damageDateEnd = this.damageDateRange[1];
+      }else {
+        this.queryParams.damageDateStart ='';
+        this.queryParams.damageDateEnd ='';
+      }
+      queryDamageData(this.queryParams).then(res => {
+        this.tableDate = res.data;
+        this.queryParams.count=res.count;
+        if(this.tableDate){
+          this.summation= [
+            {label: 'damageNum', title: '报损总数量', value: 0},
+            {label: 'damageAmount', title: '报损总金额', value: 0, unit: '元'},
+          ];
+          this.tableDate.forEach(item=>{
+            this.summation.forEach(sumItem => {
+              if (item.hasOwnProperty(sumItem.label)) {
+                sumItem.value += item[sumItem.label]
+              }
+              sumItem.value = keepThreeNum(sumItem.value);
+              if (sumItem.label === "damageAmount") {
+                sumItem.value = keepOneNum(sumItem.value);
+              }
+            })
+          })
+        }
+      })
+    },
+    /* 查看明细 */
+    handleDetails() {
+      if (this.selected.length <= 0) {
+        Message.warning("请选择要查看的数据");
+        return false
+      }
+      if (this.selected.length > 1) {
+        Message.warning("请选择一条数据进行查看");
+        return false
+      }
+      if (this.selected.length == 1) {
+        this.detailDialog = true;
+        this.detailsInfo[0].value = this.selected[0].damageNo
+        this.detailsInfo[1].value = this.selected[0].reason
+        this.detailsInfo[2].value = this.selected[0].damageDate
+        this.detailsInfo[3].value = this.selected[0].person
+        this.detailsInfo[4].value = this.selected[0].damageNum
+        this.detailsInfo[5].value = this.selected[0].damageAmount
+        this.detailsInfo[6].value = this.selected[0].remarks
+        viewDetail({id: this.selected[0].id}).then(res => {
+          this.detailDialogData = res.data;
+        })
+      }
+    },
+    /* 新增报损 */
+    handleAdd() {
+      this.dialogType='add';
+      this.addDialog = true;
+      this.addParams = {
+        damageNo: '',
+        damageDate: getCurrentDay(),
+        reason: '',
+      };
+      this.accessoriesList = []
+      productionNumber().then( res => {
+        this.addParams.damageNo = res.msg;
+      })
+    },
+    /* 编辑报损 */
+    handleUpdate() {
+      if (!this.selected || this.selected === [] || this.selected.length === 0) {
+        Message.warning("请选择要修改的数据");
+      } else if (this.selected.length !== 1) {
+        Message.warning("请选择一条数据进行修改");
+      } else {
+        this.dialogType='edit';
+        this.addDialog = true;
+        this.addParams = JSON.parse(JSON.stringify(this.selected[0]));
+        updDamageDataQuery({id : this.selected[0].id}).then(res => {
+          this.accessoriesList = res.data;
+        })
+      }
+    },
+    /* 导入辅料 */
+    handleExportProduct(){
+      this.selectAccessoriesDialog=true
+    },
+    /* 移除辅料 */
+    deleteRow(index, rows) {
+      rows.splice(index, 1);
+    },
+    /*删除报损*/
+    handleDelete() {
+      if (!this.selected || this.selected === [] || this.selected.length === 0) {
+        this.$message({
+          message: '请至少选择一条数据',
+          type: 'warning'
+        });
+      } else {
+        this.$confirm('此操作将删除选中数据，是否继续?', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning',
+        }).then(() => {
+          let ids = []
+          this.selected.forEach(item => {
+            ids.push(item.id)
+          })
+          delDamageData({ids: ids.toString()}).then(res => {
+            if (res.code === 200) {
+              this.$message({
+                type: 'success',
+                message: res.msg
+              });
+              this.handleQuery();
+            } else {
+              this.$message({
+                type: 'error',
+                message: res.msg
+              });
+            }
+          })
+          this.selected = [];
+        }).catch(() => {
+          this.$message({
+            type: 'info',
+            message: '已取消删除'
+          });
+        });
+      }
+    },
+    /* 导出报损 */
+    handleExport(param) {
+      let ids = [];
+      if (this.selected.length > 0) {
+        this.selected.forEach(item => {
+          ids.push(item.id)
+        })
+      }
+      if (param === 0) {//导出订单
+        this.download('accessories/damage/exportDamage', {
+          ids: ids.toString()
+        }, `报损单.xlsx`)
+      } else if (param === 1) {//导出产品
+        this.download('accessories/damage/exportDamageDetails', {
+          ids: ids.toString()
+        }, `报损单明细.xlsx`)
+      }
+    },
+    /* 打印 */
+    handlePrint() {
+
+    },
+    /*分页器*/
+    handleChange(size, num) {
+      this.queryParams.pageNum = num;
+      this.queryParams.pageSize = size;
+      this.handleQuery();
+    },
+    /*  勾选表格复选框*/
+    handleSelectionChange(val) {
+      this.selected = val;
+    },
+    /* 单击表格行 */
+    handleRowClick(row, column, event) {
+      this.$refs.templateTableRef.toggleRowSelection(row, column)
+    },
+    /* 保存选择辅料数据 */
+    saveSelectAccessories(val, tableData) {
+      if (!val || val.length <= 0) {
+        Message.warning("请选择一条数据进行添加");
+        return false
+      }
+      if (val.length >= 1) {
+        for (let i = 0; i < val.length; i++) {
+          var index = tableData.indexOf(val[i])
+          for (let j = 0; j < this.accessoriesList.length; j++) {
+            if (val[i].id == this.accessoriesList[j].id){
+              Message.warning("序号为" + (index + 1) + "的数据已经添加,不可重复添加！");
+              return;
+            }
+          }
+        }
+        this.accessoriesList.push(...val);
+        Message.success("添加成功");
+        this.selectAccessoriesDialog = false;
+        this.$refs.accessoriesDialog.$refs.templateTableRef.clearSelection();
+      }
+    },
+    /* 取消选择辅料数据 */
+    cancelSelectAccessories() {
+      this.selectAccessoriesDialog = false;
+      this.$refs.accessoriesDialog.$refs.templateTableRef.clearSelection();
+    },
+    saveAdd(formName) {
+      this.$refs[formName].validate((valid) => {
+        if (valid) {
+          if (this.accessoriesList.length <= 0) {
+            Message.warning("请导入辅料信息进行采购");
+          } else {
+            this.addParams.accessoriesList=this.accessoriesList;
+            if(this.dialogType==='add'){
+              addDamageData(this.addParams).then(res => {
+                if (res.code === 200) {
+                  this.$message({
+                    type: 'success',
+                    message: res.msg
+                  });
+                  this.handleQuery();
+                } else {
+                  this.$message({
+                    type: 'error',
+                    message: res.msg
+                  });
+                }
+              })
+              this.addDialog = false;
+            }
+            if(this.dialogType==='edit'){
+              this.addParams.accessoriesList=this.accessoriesList;
+                updDamageData(this.addParams).then(res => {
+                  if (res.code === 200) {
+                    this.$message({
+                      type: 'success',
+                      message: res.msg
+                    });
+                    this.handleQuery();
+                  } else {
+                    this.$message({
+                      type: 'error',
+                      message: res.msg
+                    });
+                  }
+                })
+                this.addDialog = false;
+            }
+          }
+        } else {
+          return false;
+        }
+      });
+    },
+  }
+}
+</script>
+
+<style lang="scss" scoped>
+.rightTable {
+  height: calc(100% - 105px);
+}
+
+</style>
+

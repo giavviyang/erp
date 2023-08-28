@@ -1,0 +1,376 @@
+package com.erp.sales.service.impl;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.erp.common.core.domain.AjaxResult;
+import com.erp.common.core.domain.CommonResult;
+import com.erp.common.utils.MapUtil;
+import com.erp.common.utils.StringUtils;
+import com.erp.common.utils.poi.ExcelUtil;
+import com.erp.floor.mapper.sales.AdditionalMapper;
+import com.erp.floor.mapper.sales.OrderMapper;
+import com.erp.floor.mapper.sales.OrderProductMapper;
+import com.erp.floor.mapper.sales.ProductProcessMapper;
+import com.erp.floor.mapper.system.SysSemiProductMapper;
+import com.erp.floor.pojo.sales.domain.*;
+import com.erp.floor.pojo.system.domain.SysSemiProduct;
+import com.erp.sales.service.OrderProductService;
+import org.springframework.stereotype.Service;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletResponse;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+/**
+ * @version 1.0
+ * @author： WangQiMin
+ * @date： 2022-07-26 18:30
+ */
+@Service
+public class OrderProductServiceImpl extends ServiceImpl<OrderProductMapper, OrderProduct> implements OrderProductService {
+    @Resource
+    private OrderMapper orderMapper;
+    @Resource
+    private ProductProcessMapper productProcessMapper;
+    @Resource
+    private SysSemiProductMapper sysSemiProductMapper;
+    @Resource
+    private OrderProductMapper orderProductMapper;
+    @Resource
+    private AdditionalMapper additionalMapper;
+
+
+    /**
+     * 新增产品工艺对应关系
+     *
+     * @param orderProduct 产品对象
+     */
+    @Override
+    public void addProductProcess(OrderProduct orderProduct, int del) {
+        if (del == 0) {
+            //修改时先将旧数据删除
+            LambdaQueryWrapper<ProductProcess> delWrapper = new LambdaQueryWrapper<>();
+            delWrapper.eq(ProductProcess::getProductId,orderProduct.getId());
+            productProcessMapper.delete(delWrapper);
+        }
+        LambdaQueryWrapper<SysSemiProduct> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SysSemiProduct::getProductId,orderProduct.getProductId());
+        List<SysSemiProduct> sysSemiProducts = sysSemiProductMapper.selectList(wrapper);
+        for (SysSemiProduct sysSemiProduct : sysSemiProducts) {
+            if (!sysSemiProduct.getAttribute().equals("中间片")) {
+                ProductProcess productProcess = new ProductProcess();
+                productProcess.setOrderNo(orderProduct.getOrderNo());
+                productProcess.setProductId(orderProduct.getId());
+                productProcess.setSemiProductId(sysSemiProduct.getId());
+                productProcess.setProductName(orderProduct.getProductName());
+                productProcess.setPosition(orderProduct.getPosition());
+                productProcess.setItemSurface(sysSemiProduct.getAttribute());
+                productProcess.setItemName(sysSemiProduct.getSemiProductName());
+                productProcess.setItemType(sysSemiProduct.getType());
+                productProcess.setItemThick(Integer.valueOf(sysSemiProduct.getThick()));
+                productProcess.setProcessContent(sysSemiProduct.getCraftFlow());
+                productProcess.setProcessId(sysSemiProduct.getCraftFlowId());
+                productProcess.setItemWide(orderProduct.getWideHead());
+                productProcess.setItemHigh(orderProduct.getHighHead());
+                productProcess.setNum(orderProduct.getNum());
+                productProcess.setItemArea((Double) (orderProduct.getProductArea() / orderProduct.getNum()));
+                Double weight = productProcess.getItemThick() * productProcess.getItemArea() * 0.0025;
+                productProcess.setItemWeight(weight);
+                productProcessMapper.insert(productProcess);
+            }
+        }
+    }
+
+    /**
+     * 删除产品工艺对应关系
+     *
+     * @param orderIds 订单id集合
+     */
+    @Override
+    public void delProduct(List<String> orderIds) {
+        LambdaQueryWrapper<OrderProduct> wrapper = new LambdaQueryWrapper<>();
+        wrapper.in(OrderProduct::getOrderId, orderIds);
+        List<OrderProduct> orderProducts = orderProductMapper.selectList(wrapper);
+        if (orderProducts != null && orderProducts.size() > 0) {
+            List<String> productIds = new ArrayList<>();
+            for (OrderProduct orderProduct : orderProducts) {
+                productIds.add(orderProduct.getId());
+            }
+            //删除产品附加项
+            LambdaQueryWrapper<Additional> additionalWrapper = new LambdaQueryWrapper<>();
+            additionalWrapper.in(Additional::getProductId, productIds);
+            additionalMapper.delete(additionalWrapper);
+            //删除产品单片对应关系
+            LambdaQueryWrapper<ProductProcess> delWrapper = new LambdaQueryWrapper<>();
+            delWrapper.in(ProductProcess::getProductId,productIds);
+            productProcessMapper.delete(delWrapper);
+        }
+        //删除产品
+        orderProductMapper.delete(wrapper);
+    }
+
+    /**
+     * 查看工艺
+     *
+     * @param orderId 订单id
+     * @return
+     */
+    @Override
+    public List<Map<String, Object>> queryProcess(String orderId) {
+        //查询该订单下的所有产品
+        LambdaQueryWrapper<OrderProduct> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(OrderProduct::getOrderId, orderId);
+        List<Map<String, Object>> mapList = orderProductMapper.selectMaps(queryWrapper);
+        //产品id集合
+        List<Object> productIds = new ArrayList<>();
+        for (Map<String, Object> map : mapList) {
+            productIds.add(map.get("id"));
+        }
+        LambdaQueryWrapper<ProductProcess> wrapper = new LambdaQueryWrapper<>();
+        wrapper.in(ProductProcess::getProductId,productIds);
+        wrapper.orderByDesc(ProductProcess::getProductId);
+        List<Map<String, Object>> returnList = productProcessMapper.selectMaps(wrapper);
+        for (Map<String, Object> map : returnList) {
+            for (Map<String, Object> stringObjectMap : mapList) {
+                if (map.get("productId").equals(stringObjectMap.get("id"))) {
+//                    stringObjectMap.remove("id");
+//                    stringObjectMap.remove("productId");
+                    map.putAll(stringObjectMap);
+                }
+            }
+        }
+        return returnList;
+    }
+
+    /**
+     * 修改产品工艺对应关系
+     *
+     * @param productProcess
+     * @return
+     */
+    @Override
+    public AjaxResult updateProcess(List<Map<String, Object>> productProcess) {
+        for (Map<String, Object> process : productProcess) {
+            ProductProcess productProcess1 = MapUtil.mapToEntity(process, ProductProcess.class);
+            productProcessMapper.updateById(productProcess1);
+        }
+        return AjaxResult.success("工艺流程修改成功！");
+    }
+
+    /**
+     * 自然分架中查询产品数据
+     *
+     * @param orderRecords
+     * @return
+     */
+    @Override
+    public List<OrderProduct> selectProduct(List<OrderRecord> orderRecords) {
+        List<Object> ids = new ArrayList<>();
+        for (OrderRecord orderRecord : orderRecords) {
+            ids.add(orderRecord.getId());
+        }
+        if (ids.size() > 0) {
+            LambdaQueryWrapper<OrderProduct> wrapper = new LambdaQueryWrapper<>();
+            wrapper.in(OrderProduct::getOrderId,ids);
+            wrapper.orderByDesc(OrderProduct::getOrderNo);
+            List<OrderProduct> orderProducts = orderProductMapper.selectList(wrapper);
+            //过滤已经分架完成的产品
+            orderProducts.removeIf(orderProduct -> orderProduct.getNum() <= orderProduct.getShelfNum());
+            for (OrderProduct orderProduct : orderProducts) {
+                for (OrderRecord orderRecord : orderRecords) {
+                    if (orderProduct.getOrderId().equals(orderRecord.getId())) {
+                        orderProduct.setOrderNo(orderRecord.getOrderNo());
+                        orderProduct.setCustomNo(orderRecord.getCustomNo());
+                        orderProduct.setEntryName(orderRecord.getEntryName());
+                        orderProduct.setCustomerName(orderRecord.getCustomerName());
+                    }
+                }
+                Integer num = orderProduct.getNum() - orderProduct.getShelfNum();
+                orderProduct.setNoShelfNum(num);
+            }
+            return orderProducts;
+        }else {
+            return null;
+        }
+    }
+
+    /**
+     * 查询每个产品的各个单片属性
+     * @param orderProducts 产品集合
+     */
+    @Override
+    public List<ProductProcess> selectProcess(List<OrderProduct> orderProducts) {
+        List<Object> productIds = new ArrayList<>();
+        for (OrderProduct orderProduct : orderProducts) {
+            productIds.add(orderProduct.getId());
+        }
+        LambdaQueryWrapper<ProductProcess> wrapper = new LambdaQueryWrapper<>();
+        wrapper.in(ProductProcess::getProductId,productIds);
+        wrapper.orderByDesc(ProductProcess::getItemArea);
+        List<ProductProcess> productProcesses = productProcessMapper.selectList(wrapper);
+        for (ProductProcess productProcess : productProcesses) {
+            for (OrderProduct orderProduct : orderProducts) {
+                if (productProcess.getProductId().equals(orderProduct.getId())) {
+                    productProcess.setOrderNo(orderProduct.getOrderNo());
+                    productProcess.setCustomNo(orderProduct.getCustomNo());
+                    productProcess.setEntryName(orderProduct.getEntryName());
+                    productProcess.setCustomerName(orderProduct.getCustomerName());
+                    productProcess.setProductName(orderProduct.getProductName());
+                    productProcess.setShelfNum(orderProduct.getNoShelfNum());
+                    productProcess.setPosition(orderProduct.getPosition());
+                    productProcess.setRequirement(orderProduct.getRequirement());
+                    productProcess.setRemarks(orderProduct.getRemarks());
+                }
+            }
+        }
+        return productProcesses;
+    }
+
+    /**
+     * 导出产品
+     *
+     * @param ids      订单id
+     */
+    @Override
+    public void exportProduct(HttpServletResponse response, String ids) {
+        LambdaQueryWrapper<OrderProduct> wrapper = new LambdaQueryWrapper<>();
+        if (ids != null) {
+            wrapper.in(OrderProduct::getOrderId, ids.split(","));
+        }
+        wrapper.orderByDesc(OrderProduct::getOrderNo);
+        List<OrderProduct> orderProducts = orderProductMapper.selectList(wrapper);
+        ExcelUtil<OrderProduct> util = new ExcelUtil<OrderProduct>(OrderProduct.class);
+        util.exportExcel(response, orderProducts, "参数数据");
+    }
+
+    /**
+     * 导出迪赛模板
+     *
+     * @param response
+     * @param id       订单id
+     */
+    @Override
+    public void exportMachineFlow(HttpServletResponse response, String id) {
+        List<OrderProduct> orderProducts = orderProductMapper.selectByIds(id.split(","));
+        List<FlowExcelPojo> list = new ArrayList<>();
+        for (int i = 0; i < orderProducts.size(); i++) {
+            FlowExcelPojo flowExcelPojo = new FlowExcelPojo();
+            flowExcelPojo.setPIECES("N" + (i + 1) + "=");
+            flowExcelPojo.setQuantity(orderProducts.get(i).getNum());
+            flowExcelPojo.setBase(orderProducts.get(i).getWideHead());
+            flowExcelPojo.setHeight(orderProducts.get(i).getHighHead());
+            flowExcelPojo.setCustomer(orderProducts.get(i).getCustomerName());
+            flowExcelPojo.setOrder(orderProducts.get(i).getOrderNo());
+            flowExcelPojo.setNote1(orderProducts.get(i).getRemarks());
+            flowExcelPojo.setNote2(orderProducts.get(i).getRemarksOne());
+            flowExcelPojo.setNote3(orderProducts.get(i).getRemarksTwo());
+            list.add(flowExcelPojo);
+        }
+        ExcelUtil<FlowExcelPojo> util = new ExcelUtil<FlowExcelPojo>(FlowExcelPojo.class);
+        util.exportExcel(response, list, "IMPORT");
+    }
+
+    /**
+     * 手动分架-查询订单中未分架的半产品信息
+     *
+     * @param orderRecords
+     * @return
+     */
+    @Override
+    public List<ProductProcess> selectSemiProduct(List<OrderRecord> orderRecords) {
+        List<Object> ids = new ArrayList<>();
+        for (OrderRecord orderRecord : orderRecords) {
+            ids.add(orderRecord.getId());
+        }
+        LambdaQueryWrapper<OrderProduct> wrapper = new LambdaQueryWrapper<>();
+        wrapper.in(OrderProduct::getOrderId,ids);
+        List<OrderProduct> orderProducts = orderProductMapper.selectList(wrapper);
+        //过滤已经分架完成的产品
+        orderProducts.removeIf(orderProduct -> orderProduct.getNum() <= orderProduct.getShelfNum());
+        ids = new ArrayList<>();
+        if (orderProducts.size() > 0) {
+            for (OrderProduct orderProduct : orderProducts) {
+                ids.add(orderProduct.getId());
+            }
+            LambdaQueryWrapper<ProductProcess> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.in(ProductProcess::getProductId,ids);
+            queryWrapper.orderByAsc(ProductProcess::getOrderNo);
+            queryWrapper.orderByAsc(ProductProcess::getProductId);
+            queryWrapper.orderByAsc(ProductProcess::getItemSurface);
+            List<ProductProcess> processList = productProcessMapper.selectList(queryWrapper);
+            for (ProductProcess productProcess : processList) {
+                for (OrderProduct orderProduct : orderProducts) {
+                    if (productProcess.getProductId().equals(orderProduct.getId())) {
+                        for (OrderRecord orderRecord : orderRecords) {
+                            if (orderProduct.getOrderId().equals(orderRecord.getId()))
+                                productProcess.setCustomerName(orderRecord.getCustomerName());
+                            productProcess.setEntryName(orderRecord.getEntryName());
+                            productProcess.setCustomNo(orderRecord.getCustomNo());
+                        }
+                        productProcess.setNoShelfNum(orderProduct.getNum() - orderProduct.getShelfNum());
+                        productProcess.setShelfNum(orderProduct.getNum() - orderProduct.getShelfNum());
+                        productProcess.setRequirement(orderProduct.getRequirement());
+                    }
+                }
+            }
+            return processList;
+        }else {
+            return null;
+        }
+    }
+
+    /**
+     * 查询可打包产品
+     *
+     * @param orderProduct
+     */
+    @Override
+    public CommonResult<List<OrderProduct>> queryPackProduct(OrderProduct orderProduct) {
+        LambdaQueryWrapper<OrderRecord> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(OrderRecord::getIsCache , 0);
+        wrapper.eq(OrderRecord::getIsDel, 0);
+//        wrapper.ne(OrderRecord::getRackSplittingStatus, 0);
+        if (StringUtils.isNotEmpty(orderProduct.getOrderNo()))
+            wrapper.eq(OrderRecord::getOrderNo , orderProduct.getOrderNo());
+        if (StringUtils.isNotEmpty(orderProduct.getCustomNo()))
+            wrapper.eq(OrderRecord::getCustomNo, orderProduct.getCustomNo());
+        if (StringUtils.isNotEmpty(orderProduct.getCustomerName()))
+            wrapper.eq(OrderRecord::getCustomerName, orderProduct.getCustomerName());
+        if (StringUtils.isNotEmpty(orderProduct.getEntryName()))
+            wrapper.like(OrderRecord::getEntryName,  orderProduct.getEntryName());
+        List<OrderRecord> orderRecords = orderMapper.selectList(wrapper);
+        if (orderRecords.size() > 0) {
+            Set<String> idSet = orderRecords.stream().collect(Collectors.groupingBy(OrderRecord::getId)).keySet();
+            LambdaQueryWrapper<OrderProduct> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.in(OrderProduct::getOrderId , idSet);
+            if (StringUtils.isNotEmpty(orderProduct.getId())) {
+                String[] split = orderProduct.getId().split(",");
+                queryWrapper.notIn(OrderProduct::getId , split);
+            }
+            queryWrapper.orderByDesc(OrderProduct::getOrderNo);
+//            queryWrapper.isNotNull(OrderProduct::getWarehousingQuantity);
+//            queryWrapper.ne(OrderProduct::getWarehousingQuantity , "");
+//            queryWrapper.ne(OrderProduct::getWarehousingQuantity , 0);
+            List<OrderProduct> orderProducts = orderProductMapper.selectList(queryWrapper);
+            //过滤入库数量大于打包数量
+            List<OrderProduct> collect = orderProducts.stream().filter(one -> one.getNum() > one.getOrderPackNum()).collect(Collectors.toList());
+            for (OrderProduct product : collect) {
+                for (OrderRecord orderRecord : orderRecords) {
+                    if (product.getOrderId().equals(orderRecord.getId())) {
+                        product.setCustomNo(orderRecord.getCustomNo());
+                        product.setCustomerName(orderRecord.getCustomerName());
+                        product.setEntryName(orderRecord.getEntryName());
+                    }
+                }
+            }
+            return CommonResult.success(collect);
+        }
+       return CommonResult.success();
+    }
+
+}

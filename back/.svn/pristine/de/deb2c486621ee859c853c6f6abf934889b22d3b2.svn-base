@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.erp.floor.mapper.sales.DeliveryShelfMapper">
+
+    <resultMap type="DeliveryShelf" id="DeliveryShelfResult">
+        <id property="id" column="id"/>
+        <result property="deliverId" column="deliver_id"/>
+        <result property="frameId" column="frame_id"/>
+        <result property="frameNum" column="frame_num"/>
+        <result property="framePrice" column="frame_price"/>
+        <result property="receiptNum" column="receipt_num"/>
+        <result property="isBring" column="is_bring"/>
+        <result property="frameNo" column="frame_no"/>
+        <result property="frameName" column="frame_name"/>
+        <result property="frameSpecs" column="frame_specs"/>
+    </resultMap>
+
+    <select id="byDeliverId" parameterType="String" resultMap="DeliveryShelfResult">
+        select b.* , s.frame_no, s.frame_name , s.frame_specs
+        from delivery_shelf b
+        left join shelf_manage s on b.frame_id = s.id
+        where b.deliver_id = #{deliverId}
+    </select>
+
+
+</mapper>

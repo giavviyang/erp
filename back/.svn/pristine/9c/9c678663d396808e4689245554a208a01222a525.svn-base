@@ -1,0 +1,1732 @@
+<template>
+  <div class="app-container-padding">
+    <el-form :model="queryParams" ref="queryForm" size="mini" :inline="true" class="iptAndBtn">
+      <el-form-item label="下单日期" class="daterange">
+        <el-date-picker
+          v-model="preparationDateRange"
+          type="daterange"
+          range-separator="至"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
+          value-format="yyyy-MM-dd" @change="handleQuery">
+        </el-date-picker>
+      </el-form-item>
+      <el-form-item>
+        <el-button type="primary" icon="el-icon-search" size="mini" @click="handleQuery">搜索</el-button>
+        <el-button icon="el-icon-refresh" size="mini" @click="resetQuery">重置</el-button>
+      </el-form-item>
+    </el-form>
+    <div class="btn">
+      <el-button
+        type="primary"
+        icon="el-icon-reading"
+        size="mini"
+        @click="selectOrder"
+        v-hasPermi="['sales:order:selectOrder']">查看订单
+      </el-button>
+      <el-button
+        type="primary"
+        icon="el-icon-plus"
+        size="mini"
+        @click="handleAdd"
+        v-hasPermi="['sales:order:add']">新增订单
+      </el-button>
+      <el-button
+        type="primary"
+        icon="el-icon-edit"
+        size="mini"
+        @click="handleUpdate"
+        v-hasPermi="['sales:order:update']">编辑订单
+      </el-button>
+      <el-button
+        type="primary"
+        icon="el-icon-delete"
+        size="mini"
+        @click="handleDelete"
+        v-hasPermi="['sales:order:del']">废置订单
+      </el-button>
+      <el-button
+        type="primary"
+        icon="el-icon-document-checked"
+        size="mini"
+        @click="handleCheck"
+        v-hasPermi="['sales:order:auditOrder']">订单审核
+      </el-button>
+      <el-button
+        type="primary"
+        icon="el-icon-document-delete"
+        size="mini"
+        @click="handleRemoveCheck"
+        v-hasPermi="['sales:order:undoAudit']">订单消审
+      </el-button>
+      <el-button
+        type="primary"
+        icon="el-icon-delete"
+        size="mini"
+        @click="delFlow"
+        v-hasPermi="['sales:order:delFlow']">删除流程卡
+      </el-button>
+      <el-button
+        type="primary"
+        icon="el-icon-paperclip"
+        size="mini"
+        @click="handleUpload"
+        v-hasPermi="['sales:orderEnclosure:uploadEnclosure']">上传附件
+      </el-button>
+      <Print typeId="ddgl" @toPrint="toPrint"></Print>
+      <el-dropdown>
+        <el-button type="primary" size="mini" v-hasPermi="['sales:orderProduct:exportProduct']">
+          <i class="iconfont icon-daochuwenjian"></i> 导出<i class="el-icon-arrow-down el-icon--right"></i>
+        </el-button>
+        <el-dropdown-menu slot="dropdown">
+          <el-dropdown-item @click.native="exportTask"><i
+            class="iconfont icon-daochuwenjian"></i>导出任务单
+          </el-dropdown-item>
+          <el-dropdown-item @click.native="exportOrder(0)"><i
+            class="iconfont icon-daochuwenjian"></i>导出订单
+          </el-dropdown-item>
+          <el-dropdown-item @click.native="exportOrder(1)"><i
+            class="iconfont icon-daochuwenjian"></i>导出产品
+          </el-dropdown-item>
+          <el-dropdown-item @click.native="exportOrder(2)"><i class="iconfont icon-daochuwenjian" ></i>导出迪赛perfectcut模板</el-dropdown-item>
+        </el-dropdown-menu>
+      </el-dropdown>
+      <el-button
+        type="primary"
+        :icon="tableSizeIcon"
+        size="mini"
+        style="position: absolute;right: 10px"
+        @click="changeTableHeight"
+      >{{ tableSize }}
+      </el-button>
+    </div>
+    <count-table class="rightTable orderTable" @handleChange="handleChange" :pageSize="pageSize" :pageNum="pageNum"
+                 :total="total" :summation="summation">
+      <el-table highlight-current-row
+                :data="orderList"
+                stripe
+                border
+                style="width: 100%"
+                height="100%"
+                ref="multipleTable"
+                @selection-change="handleSelectionChange"
+                @row-click="handleRowClick"
+                :cell-class-name="cellName"
+                slot="table">
+        <el-table-column
+          type="selection"
+          width="55">
+        </el-table-column>
+        <el-table-column
+          :index="getIndex"
+          type="index"
+          label="序号"
+          width="55" show-overflow-tooltip>
+        </el-table-column>
+        <el-table-column
+          v-for="item in orderBeforeListColumn"
+          :key="item.prop"
+          :label="item.label"
+          show-overflow-tooltip>
+          <el-table-column :prop="item.prop" show-overflow-tooltip :min-width="item.width">
+            <template #header scoped-slot="scope">
+              <!--可根据类型来显示为搜索框、下拉框等-->
+              <el-input
+                v-if="item.type=='ipt'"
+                v-model="queryParams[item.prop]"
+                size="mini"
+                placeholder="请输入"
+                clearable @keyup.enter.native="handleQuery"/>
+              <el-select v-if="item.type=='select'" v-model="queryParams[item.prop]" placeholder='请选择' clearable
+                         size="mini" ref='statusSelect' @change="handleQuery">
+                <el-option
+                  v-for="item in dict.type.order_type"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                >
+                </el-option>
+              </el-select>
+            </template>
+          </el-table-column>
+        </el-table-column>
+        <el-table-column
+          v-for="(item,index) in orderListColumnStatus"
+          :key="item.prop"
+          :label="item.label"
+          show-overflow-tooltip>
+          <el-table-column :prop="item.prop" show-overflow-tooltip width="70">
+            <template #header scoped-slot="scope">
+              <el-select v-model="queryParams[item.prop]" placeholder="请选择" clearable size="mini"
+                         v-if="item.type==='status'" ref='statusSelect' @change="handleQuery">
+                <el-option label="未开始" value="0"></el-option>
+                <el-option label="进行中" value="1"></el-option>
+                <el-option label="已完成" value="2"></el-option>
+              </el-select>
+            </template>
+            <template slot-scope="scope">
+              <p v-if="item.prop.includes('Result')">
+                <!--                <span v-if="scope.row[item.prop]==0"><i class="el-icon-check"></i></span>-->
+                <!--                <span v-if="scope.row[item.prop]==1"><i class="el-icon-close"></i></span>-->
+                <!--                <span v-if="scope.row[item.prop]==2"><i class="iconfont icon-weiwancheng1"></i></span>-->
+                <el-tooltip class="item" effect="dark" content="审核通过" placement="top"
+                            v-if="scope.row[item.prop]==0">
+                  <i class="el-icon-success" style="color:#67C23A; font-size: 24px;"></i>
+                </el-tooltip>
+                <el-tooltip class="item" effect="dark" content="审核未通过" placement="top"
+                            v-if="scope.row[item.prop]==1">
+                  <i class="el-icon-error" style="color:#F56C6C; font-size: 24px;"></i>
+                </el-tooltip>
+                <el-tooltip class="item" effect="dark" content="未审核" placement="top" v-if="scope.row[item.prop]==2">
+                  <i class="iconfont icon-weiwancheng1"></i>
+                </el-tooltip>
+              </p>
+              <p v-if="item.prop.includes('Status')">
+                <!--                <span v-if="scope.row[item.prop]==0"><i class="iconfont icon-weiwancheng1"></i></span>-->
+                <!--                <span v-if="scope.row[item.prop]==1"><i class="iconfont icon-weiwancheng"></i></span>-->
+                <!--                <span v-if="scope.row[item.prop]==2"><i class="iconfont icon-dkw_wancheng"></i></span>-->
+                <el-tooltip class="item" effect="dark" content="未开始" placement="top" v-if="scope.row[item.prop]==0">
+                  <i class="iconfont icon-weiwancheng1"></i>
+                </el-tooltip>
+                <el-tooltip class="item" effect="dark" content="进行中" placement="top" v-if="scope.row[item.prop]==1">
+                  ><i class="el-icon-remove" style="color:#409EFF; font-size: 24px;" ></i>
+                </el-tooltip>
+                <el-tooltip class="item" effect="dark" content="已完成" placement="top" v-if="scope.row[item.prop]==2">
+                  ><i class="el-icon-success" style="color:#67C23A; font-size: 24px;"></i>
+                </el-tooltip>
+              </p>
+            </template>
+          </el-table-column>
+        </el-table-column>
+        <el-table-column
+          v-for="item in orderListColumn"
+          :key="item.prop"
+          :label="item.label"
+          show-overflow-tooltip>
+          <el-table-column :prop="item.prop" show-overflow-tooltip :min-width="item.width">
+            <template #header scoped-slot="scope">
+              <!--可根据类型来显示为搜索框、下拉框等-->
+              <el-input
+                v-if="item.type=='ipt'"
+                v-model="queryParams[item.prop]"
+                size="mini"
+                placeholder="请输入"
+                clearable @keyup.enter.native="handleQuery"/>
+              <el-select v-if="item.type=='select'" v-model="queryParams[item.prop]" placeholder='请选择' clearable
+                         size="mini" ref='statusSelect' @change="handleQuery">
+                <el-option
+                  v-for="item in dict.type.order_type"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                >
+                </el-option>
+              </el-select>
+            </template>
+          </el-table-column>
+        </el-table-column>
+      </el-table>
+    </count-table>
+    <div class="tabBtn">
+      <el-tabs v-model="activeName" @tab-click="handleClick">
+        <el-tab-pane label="查看明细" name="checkDetails">
+          <summary-table class="rightTable orderTable">
+            <el-table highlight-current-row
+                      :data="orderDetails"
+                      stripe
+                      border
+                      style="width: 100%"
+                      height="100%"
+                      ref="checkDetailsTable"
+                      show-summary
+                      :summary-method="getSummariesOrder"
+                      slot="table">
+              <el-table-column
+                type="index"
+                label="序号"
+                width="50">
+              </el-table-column>
+              <el-table-column
+                v-for="item in orderDetailsColumn"
+                :key="item.prop"
+                :label="item.label"
+                show-overflow-tooltip>
+                <el-table-column :prop="item.prop" show-overflow-tooltip :min-width="item.width">
+                  <template #header scoped-slot="scope">
+                    <!--可根据类型来显示为搜索框、下拉框等-->
+                    <el-input
+                      v-model="queryDetail[item.prop]" v-if="item.type==='ipt'"
+                      size="mini"
+                      placeholder="请输入"
+                      clearable @keyup.enter.native="handleQuery"/>
+                  </template>
+                </el-table-column>
+              </el-table-column>
+            </el-table>
+          </summary-table>
+        </el-tab-pane>
+        <el-tab-pane label="查看工艺" name="checkProcess">
+          <slot-table class="rightTable checkProcess">
+            <el-table highlight-current-row
+                      :data="orderProcess"
+                      stripe
+                      border
+                      style="width: 100%"
+                      height="100%"
+                      ref="checkProcessTable"
+                      :span-method="processSpanMethod"
+                      slot="table">
+              <el-table-column
+                type="index"
+                label="序号"
+                width="50">
+              </el-table-column>
+              <el-table-column
+                v-for="(item,index) in orderProcessColumn"
+                :key="index"
+                :label="item.label" :prop="item.prop" :min-width="item.width">
+              </el-table-column>
+            </el-table>
+          </slot-table>
+        </el-tab-pane>
+        <el-tab-pane label="流程卡进度" name="cardProgress">
+          <slot-table class="rightTable">
+            <el-table highlight-current-row
+                      :data="flowCardData"
+                      stripe
+                      border
+                      style="width: 100%"
+                      height="100%"
+                      ref="cardProgressTable"
+                      slot="table">
+              <el-table-column
+                type="index"
+                label="序号"
+                width="50">
+              </el-table-column>
+              <el-table-column
+                v-for="(item,index) in flowCardColumn"
+                :key="index"
+                :label="item.label" :prop="item.prop" :min-width="item.width">
+                <template slot-scope="scope">
+                  <template v-if="item.prop.includes('Status')">
+                    <span v-if="scope.row[item.prop]==0">未生产</span>
+                    <span v-if="scope.row[item.prop]==1">生产中</span>
+                    <span v-if="scope.row[item.prop]==2">生产完成</span>
+                  </template>
+                  <template v-else> {{ scope.row[item.prop] }}</template>
+                </template>
+              </el-table-column>
+            </el-table>
+          </slot-table>
+        </el-tab-pane>
+        <el-tab-pane label="打包记录" name="packagingRecords">
+          <summary-table class="rightTable">
+            <el-table highlight-current-row
+                      :data="packData"
+                      stripe
+                      border
+                      style="width: 100%"
+                      height="100%"
+                      ref="packagingRecordsTable"
+                      show-summary
+                      :summary-method="getSummariesOrder"
+                      slot="table">
+              <el-table-column
+                type="index"
+                label="序号"
+                width="50">
+              </el-table-column>
+              <el-table-column
+                v-for="item in packDataColumn"
+                :key="item.id"
+                :label="item.label" :prop="item.prop" :min-width="item.width">
+              </el-table-column>
+            </el-table>
+          </summary-table>
+        </el-tab-pane>
+        <el-tab-pane label="发货进度" name="deliverySchedule">
+          <summary-table class="rightTable">
+            <el-table highlight-current-row
+                      :data="deliverProgressData"
+                      stripe
+                      border
+                      style="width: 100%"
+                      height="100%"
+                      ref="deliveryScheduleTable"
+                      show-summary
+                      :summary-method="getSummariesOrder"
+                      slot="table">
+              <el-table-column
+                type="index"
+                label="序号"
+                width="50">
+              </el-table-column>
+              <el-table-column
+                v-for="item in deliverProgressColumn"
+                :key="item.id"
+                :label="item.label"
+                :prop="item.prop"
+                :min-width="item.width"
+                show-overflow-tooltip>
+                <template slot-scope="scope">
+                  <template v-if="item.prop.includes('Status')">
+                    <span v-if="scope.row[item.prop]==0">审核通过</span>
+                    <span v-if="scope.row[item.prop]==1">审核未通过</span>
+                    <span v-if="scope.row[item.prop]==2">未审核</span>
+                  </template>
+                  <template v-else>
+                    {{ scope.row[item.prop] }}
+                  </template>
+                </template>
+              </el-table-column>
+            </el-table>
+          </summary-table>
+        </el-tab-pane>
+        <el-tab-pane label="发货明细" name="deliveryDetail">
+          <summary-table class="rightTable">
+            <el-table highlight-current-row
+                      :data="deliverBusData"
+                      stripe
+                      border
+                      style="width: 100%"
+                      height="100%"
+                      ref="deliveryDetailTable"
+                      show-summary
+                      :summary-method="getSummariesOrder"
+                      slot="table">
+              <el-table-column
+                type="index"
+                label="序号"
+                width="50">
+              </el-table-column>
+              <el-table-column
+                v-for="item in deliverBusColumn"
+                :key="item.id"
+                :prop="item.prop"
+                :label="item.label"
+                :min-width="item.width"
+                show-overflow-tooltip>
+              </el-table-column>
+            </el-table>
+          </summary-table>
+        </el-tab-pane>
+        <!--        <el-tab-pane label="收款记录" name="credited"  disabled>
+                  <slot-table class="rightTable">
+                    <el-table highlight-current-row
+                              :data="orderList"
+                              stripe
+                              border
+                              style="width: 100%"
+                              height="100%"
+                              ref="creditedTable"
+                              show-summary
+                              slot="table">
+                      <el-table-column
+                        type="index"
+                        label="序号"
+                        width="50">
+                      </el-table-column>
+                      <el-table-column
+                        v-for="(item,index) in orderListColumn"
+                        :key="item.id"
+                        :label="item.label"
+                        show-overflow-tooltip>
+                        <el-table-column :prop="item.prop"
+                                         width='110' show-overflow-tooltip>
+                          <template slot="header" scoped-slot="scope">
+                            &lt;!&ndash;可根据类型来显示为搜索框、下拉框等&ndash;&gt;
+                            <el-input
+                              v-if="item.type=='ipt'"
+                              v-model="item.search"
+                              size="mini"
+                              placeholder="请输入"
+                              clearable/>
+                            <el-select v-if="item.type=='select'" v-model="item.search" placeholder="请选择" clearable
+                                       size="mini">
+                              <el-option label="已完成" value="shanghai"></el-option>
+                              <el-option label="未完成" value="beijing"></el-option>
+                            </el-select>
+                          </template>
+                        </el-table-column>
+                      </el-table-column>
+                    </el-table>
+                  </slot-table>
+                </el-tab-pane>-->
+        <el-tab-pane label="附属文件" name="subsidiaryFile">
+          <slot-table class="rightTable subsidiaryFile">
+            <el-table highlight-current-row
+                      :data="subsidiaryFile"
+                      stripe
+                      border
+                      style="width: 100%"
+                      height="100%"
+                      slot="table">
+              <el-table-column
+                type="index"
+                label="序号"
+                width="50">
+              </el-table-column>
+              <el-table-column
+                v-for="item in subsidiaryFileColumns"
+                :key="item.prop"
+                :label="item.label"
+                :prop="item.prop"
+                :min-width="item.width"
+                show-overflow-tooltip>
+              </el-table-column>
+              <el-table-column
+                label="操作"
+                width="150" class-name="operation">
+                <template slot-scope="scope">
+                  <el-button type="text" @click="handeLoadFile(scope.row)" size="mini">下载</el-button>
+                  <el-button type="text" @click.native.prevent="deleteRowFile(scope.row)" size="mini">移除</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </slot-table>
+        </el-tab-pane>
+      </el-tabs>
+      <el-button
+        type="primary"
+        :icon="detailSizeIcon"
+        size="mini"
+        style="position: absolute;right: 10px"
+        @click="handleMaximize"
+      >{{ detailSize }}
+      </el-button>
+    </div>
+    <!--  上传附件  -->
+    <el-dialog title="上传附件" :visible.sync="uploadFileDialog" width="30%" class="dialog-style uploadFileDialog"
+               :close-on-click-modal="false" :close-on-press-escape="false" :destroy-on-close="true"
+               :before-close="handleClose">
+      <el-upload drag
+                 :auto-upload="false"
+                 :action="uploadUrl()"
+                 :on-change="fileChange"
+                 :on-remove="handleRemove"
+                 :file-list="fileList">
+        <i class="el-icon-upload"></i>
+        <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
+        <!--        <div class="el-upload__tip" slot="tip">只能上传xlsx文件，且不超过10M</div>-->
+      </el-upload>
+      <span slot="footer" class="dialog-footer">
+        <el-button type="primary" size="mini" @click="submitUpload">上传</el-button>
+        <!--         <el-button size="mini" @click="uploadFileDialog=false;fileList=[]">取消</el-button>-->
+         <el-button size="mini" @click="cancelUpload">取消</el-button>
+       </span>
+    </el-dialog>
+
+    <!--  打印名称弹窗  -->
+    <el-dialog
+      title="修改Excel名称"
+      :visible.sync="isUpdateName"
+      width="30%"
+      class="dialog-style checkDialog"
+      :close-on-click-modal="false"  :close-on-press-escape="false" :destroy-on-close="true">
+      <div >
+        <div style ="font-size: 14px; padding: 30px 0; display: inline-block; width: 100px">Excel名称：</div>
+        <el-input v-model="printName" style="display: inline-block;  width: 200px" clearable size="mini" placeholder="请输入Excel名称"/>
+      </div>
+      <span slot="footer" class="dialog-footer">
+        <el-button type="primary" size="mini" @click="exportData">确定</el-button>
+        <el-button size="mini" @click="isUpdateName=false">取消</el-button>
+      </span>
+    </el-dialog>
+  </div>
+</template>
+
+<script>
+
+import SlotTable from "@/components/public/table/SlotTable";
+import {
+  getCheckOrder,
+  listOrder,
+  listProduct,
+  listProcess,
+  delOrder,
+  undoAudit,
+  exportTask,
+  delFlow
+} from "@/api/salse/order/order";
+import SummaryTable from "@/components/public/table/summaryTable";
+import {saveFile} from "@/utils/saveFile"
+import {delEnclosure, downloadEnclosure, queryEnclosure, uploadEnclosure} from "@/api/salse/order/orderEnclosure";
+import {getCurrentDay, keepOneNum, keepThreeNum, sum, tableSum} from "@/utils/order/order";
+import CountTable from "@/components/public/table/countTable";
+import {queryList,} from "@/api/salse/flowCard/flowCard";
+import {queryPack,} from "@/api/salse/order/pack"
+import {queryDeliverProgress, queryDeliverBus} from "@/api/salse/deliver"
+import {Message} from "element-ui";
+import {getTemplateList} from "@/api/system/template";
+import Print from "@/components/Print/index"
+
+export default {
+  dicts: ['order_type'],
+  name: "Order",
+  components: {CountTable, SummaryTable, SlotTable, Print},
+  data() {
+    return {
+      printList: [],
+      search: '',
+      // 查询参数
+      preparationDateRange: [],  //日期范围
+      queryParams: {
+        pageNum: 1,
+        pageSize: 20,
+        collectionStatus: '',
+        contactNumber: '',
+        contacts: '',
+        customNo: '',
+        customerName: '',
+        entryName: '',
+        id: '',
+        isCache: 0,
+        orderNo: '',
+        orderType: '',
+        packagingStatus: '',
+        preparationDateEnd: '',
+        preparationDateStart: '',
+        preparer: '',
+        productionStatus: '',
+        rackSplittingStatus: '',
+        shipmentStatus: '',       // createTime: undefined,
+        isDel: 0,
+      },
+      tableSize: '最大化',
+      tableSizeIcon: 'el-icon-zoom-in',
+      tableFlag: false,
+      detailSize: '最大化',
+      detailSizeIcon: 'el-icon-zoom-in',
+      detailsFlag: false,
+      orderList: [],  //表格数据
+      // 表头
+      orderListColumnStatus: [
+        {label: '尺寸审核', prop: 'dimensionsResult', type: 'result'},
+        {label: '工艺审核', prop: 'workmanshipResult', type: 'result'},
+        {label: '订单审核', prop: 'orderResult', type: 'result'},
+        {label: '分架状态', prop: 'rackSplittingStatus', type: 'status'},
+        {label: '生产状态', prop: 'productionStatus', type: 'status'},
+        {label: '打包状态', prop: 'packagingStatus', type: 'status'},
+        {label: '发货状态', prop: 'shipmentStatus', type: 'status'},
+        {label: '收款状态', prop: 'collectionStatus', type: 'status'},
+      ],
+      orderBeforeListColumn:[
+        {label: '订单编号', prop: 'orderNo', type: 'ipt', width: '140'},
+        {label: '订单类型', prop: 'orderType', type: 'select', width: '80'},
+        {label: '自定义编号', prop: 'customNo', type: 'ipt', width: '120'},
+        {label: '客户名称', prop: 'customerName', type: 'ipt', width: '100'},
+        {label: '项目名称', prop: 'entryName', type: 'ipt', width: '180'}
+      ],
+      orderListColumn: [
+        {label: '下单时间', prop: 'preparationDate', type: 'date', width: '180'},
+        {label: '交货日期', prop: 'receiptDate', type: 'ipt', width: '180'},
+        {label: '审核时间', prop: 'orderReview.auditTime', width: '180'},
+        {label: '下单人', prop: 'preparer', type: 'ipt', width: '100'},
+        {label: '审核人', prop: 'orderReview.reviewedBy', width: '100'},
+        {label: '联系人', prop: 'contacts', type: 'ipt', width: '100'},
+        {label: '联系电话', prop: 'contactNumber', type: 'ipt', width: '120'},
+        {label: '交货地址', prop: 'receiptAddress', type: 'ipt', width: '250'},
+        {label: '总数量（片）', prop: 'orderNum', width: '110'},
+        {label: '总周长（m）', prop: 'totalLengthen', width: '110'},
+        {label: '总面积（m²）', prop: 'totalArea', width: '110'},
+        {label: '总重量（t）', prop: 'totalWeigh', width: '110'},
+        {label: '总金额（元）', prop: 'orderAmount', width: '110'},
+        {label: '订单备注', prop: 'orderRemarks', width: '180'},
+        {label: '生产备注', prop: 'remarks', width: '180'},
+        {label: '创建时间', prop: 'createdAt', width: '180'},
+      ],
+      orderTypeOptions: [{
+        value: 0,
+        label: '普通订单'
+      }, {
+        value: 'rushOrder',
+        label: '加急订单'
+      }, {
+        value: 'sampleOrder',
+        label: '样品订单'
+      }, {
+        value: 'materialOrder',
+        label: '来料订单'
+      }, {
+        value: 'outsourcingOrders',
+        label: '外协订单'
+      }],
+      selected: [], //选中数据
+      currentRowIndex: '', //点击行的序号
+      currentOrderId: '',  //点击行id
+
+      //总合计
+      summation: [
+        {label: 'orderNum', title: '总数量', value: 0, unit: '片'},
+        {label: 'totalLengthen', title: '总周长', value: 0, unit: 'm'},
+        {label: 'totalArea', title: '总面积', value: 0, unit: 'm²'},
+        {label: 'totalWeigh', title: '总重量', value: 0, unit: 't'},
+        {label: 'orderAmount', title: '总金额', value: 0, unit: '元'},
+      ],
+      pageSize: 20,
+      pageNum: 1,
+      total: 0,
+      activeName: 'checkDetails',  //tab切换
+      orderDetails: [],   //订单明细
+      queryDetail: {
+        productName: "",
+        highHead: "",
+        id: "",
+        orderId: "",
+        position: "",
+        remarks: "",
+        requirement: "",
+        wideHead: ""
+      },
+      orderDetailsColumn: [
+        {label: '产品名称', prop: 'productName', width: '300', type: 'ipt'},
+        {label: '位置', prop: 'position', width: '100', type: 'ipt'},
+        {label: '宽（mm）', prop: 'wideHead', width: '110', type: 'ipt'},
+        {label: '高（mm）', prop: 'highHead', width: '110', type: 'ipt'},
+        {label: '数量（片）', prop: 'num', width: '100'},
+        {label: '总周长（m）', prop: 'lengthen', width: '150'},
+        {label: '单价（元/m²）', prop: 'unitPrice', width: '100'},
+        {label: '面积（m²）', prop: 'productArea', width: '100'},
+        {label: '重量（t）', prop: 'productWeight', width: '100'},
+        {label: '总金额（元）', prop: 'productAmount', width: '120'},
+        {label: '加工要求', prop: 'requirement', width: '100', type: 'ipt'},
+        {label: '备注', prop: 'remarks', width: '100', type: 'ipt'},
+      ],
+      orderProcess: [],
+      orderProcessColumn: [
+        {label: '产品名称', prop: 'productName', width: '200'},
+        {label: '单片宽（mm）', prop: 'itemWide', width: '100'},
+        {label: '单片高（mm）', prop: 'itemHigh', width: '100'},
+        {label: '单片名称', prop: 'itemName', width: '150'},
+        {label: '数量（片）', prop: 'num', width: '100'},
+        {label: '单片面积（m²）', prop: 'itemArea', width: '100'},
+        {label: '单片厚度（mm）', prop: 'itemThick', width: '120'},
+        {label: '工艺流程', prop: 'processContent', width: '300'},
+      ],
+      flowCardData: [],
+      flowCardColumn: [
+        {label: '流程卡号', prop: 'flowCardNo', width: '140', type: 'ipt'},
+        {label: '产品名称', prop: 'productName', width: '200', type: 'ipt'},
+        {label: '单片名称', prop: 'monolithicName', width: '150', type: 'ipt'},
+        {label: '分架数量（片）', prop: 'splitNum', width: '110'},
+        {label: '面积（m²）', prop: 'totalArea', width: '100'},
+        {label: '重量（t）', prop: 'totalWeight', width: '100'},
+        {label: '生产状态', prop: 'productionStatus', type: 'status', width: '120'},
+        {label: '已完成工艺', prop: 'completeProcess', width: '300'},
+        {label: '分架人', prop: 'splitPerson', type: 'ipt'},
+        {label: '分架日期', prop: 'splitDate', width: '180'},
+        {label: '损坏数量（片）', prop: 'damageNum', width: '120'},
+        {label: '补片数量（片）', prop: 'patchNum', width: '120'},
+        {label: '补片流程卡号', prop: 'patchFlowCardNo', width: '150'},
+        // {label: '生产状态', prop: 'productionStatus', width: '100'},
+        {label: '排产日期', prop: 'schedulingDate', width: '180'},
+        {label: '排产数量（片）', prop: 'schedulingNum', width: '120'},
+        {label: '发货单号', prop: 'deliveryNo'},
+        {label: '发货人', prop: 'deliveryPeople'},
+      ],
+      /* 打包明细 */
+      packData: [],
+      packDataColumn: [
+        {label: '打包编号', prop: 'packNo', width: '140'},
+        {label: '打包名称', prop: 'packName', width: '150'},
+        {label: '打包产品', prop: 'productName', width: '150'},
+        {label: '宽（mm）', prop: 'wideHead', width: '100'},
+        {label: '高（mm）', prop: 'highHead', width: '100'},
+        {label: '产品数量（片）', prop: 'num', width: '120'},
+        {label: '位置', prop: 'position', width: '120'},
+        {label: '加工要求', prop: 'requirement', width: '120'},
+        {label: '打包数量（片）', prop: 'packNum', width: '120'},
+        {label: '打包面积（m²）', prop: 'productArea', width: '120'},
+        {label: '打包重量（t）', prop: 'productWeight', width: '120'},
+      ],
+      /* 发货进度数据 */
+      deliverProgressData: [],
+      deliverProgressColumn: [
+        {label: '发货编号', prop: 'deliverNo', width: '150'},
+        {label: '审核状态', prop: 'deliverStatus', width: '100'},
+        {label: '订单编号', prop: 'orderNo', width: '120'},
+        {label: '客户名称', prop: 'customerName', width: '100'},
+        {label: '项目名称', prop: 'entryName', width: '180'},
+        // {label: '产品名称', prop: 'productName', width: '180', type: 'ipt'},
+        {label: '发货方式', prop: 'deliverMode', width: '100'},
+        {label: '发货负责人', prop: 'deliverPerson', width: '120'},
+        {label: '客户地址', prop: 'deliverAddress', width: '250'},
+        {label: '发货数量（片）', prop: 'allDeliverNum', width: '120'},
+        {label: '发货重量（t）', prop: 'deliverWeight', width: '100'},
+        {label: '发货面积（m²）', prop: 'deliverArea', width: '120'},
+        {label: '发货金额（元）', prop: 'deliverCost', width: '120'},
+        {label: '回执编号', prop: 'receiptNo', width: '100'},
+        {label: '备注', prop: 'deliverRemarks'},
+      ],
+      /* 发货明细数据 */
+      deliverBusData: [],
+      deliverBusColumn: [
+        {label: '产品名称', prop: 'productName', width: '300'},
+        {label: '位置', prop: 'position', width: '100'},
+        {label: '宽（mm）', prop: 'wideHead', width: '110'},
+        {label: '高（mm）', prop: 'highHead', width: '110'},
+        {label: '总数量（片）', prop: 'num', width: '100'},
+        {label: '已发货数量（片）', prop: 'orderDeliverNum', width: '100'},
+      ],
+
+      subsidiaryFile: [],
+      subsidiaryFileColumns: [
+        {label: '文件名称', prop: 'fileName', width: '150'},
+        {label: '文件大小', prop: 'fileSize', width: '100'},
+        {label: '文件类型', prop: 'fileType', width: '100'},
+        {label: '文件地址', prop: 'fileAddress', width: '200'},
+        {label: '上传日期', prop: 'uploadDate', width: '100'},
+      ],
+      spanArr: [], // 一个空的数组，用于存放每一行记录的合并数
+      pos: 0, // spanArr 的索引
+      contentSpanArr: [],
+      position: 0,
+      // maximizeOpen: false,    //最大化弹窗
+      naturalPoints: false,   //新建流程卡弹窗
+      uploadFileDialog: false,   //上传附件
+      limitNum: 1,
+      fileList: [],
+      /*修改Excel名称*/
+      isUpdateName: false,
+      //Excel名称
+      printName: ""
+    }
+  },
+  created() {
+    this.handleQuery();
+  },
+  mounted() {
+    // // this.keyupSubmit();
+    //合计行滚动条
+    var multipleTable = this.$refs.multipleTable.$refs.bodyWrapper;
+    multipleTable.addEventListener('scroll', () => {
+      // 滚动距离
+      const scrollLeft = multipleTable.scrollLeft
+      this.$refs.multipleTable.$refs.headerWrapper.scrollLeft = scrollLeft
+    })
+    var checkDetailsTable = this.$refs.checkDetailsTable.$refs.footerWrapper;
+    checkDetailsTable.addEventListener('scroll', () => {
+      // 滚动距离
+      const scrollLeft1 = checkDetailsTable.scrollLeft
+      this.$refs.checkDetailsTable.$refs.bodyWrapper.scrollLeft = scrollLeft1
+      this.$refs.checkDetailsTable.$refs.headerWrapper.scrollLeft = scrollLeft1
+    })
+    // packagingRecordsTable
+    var packagingRecordsTable = this.$refs.packagingRecordsTable.$refs.footerWrapper;
+    packagingRecordsTable.addEventListener('scroll', () => {
+      // 滚动距离
+      const scrollLeft2 = packagingRecordsTable.scrollLeft
+      this.$refs.packagingRecordsTable.$refs.bodyWrapper.scrollLeft = scrollLeft2
+      this.$refs.packagingRecordsTable.$refs.headerWrapper.scrollLeft = scrollLeft2
+    })
+    // deliveryScheduleTable
+    var deliveryScheduleTable = this.$refs.deliveryScheduleTable.$refs.footerWrapper;
+    deliveryScheduleTable.addEventListener('scroll', () => {
+      // 滚动距离
+      const scrollLeft3 = deliveryScheduleTable.scrollLeft
+      this.$refs.deliveryScheduleTable.$refs.bodyWrapper.scrollLeft = scrollLeft3
+      this.$refs.deliveryScheduleTable.$refs.headerWrapper.scrollLeft = scrollLeft3
+    })
+    var deliveryDetailTable = this.$refs.deliveryDetailTable.$refs.footerWrapper;
+    deliveryDetailTable.addEventListener('scroll', () => {
+      // 滚动距离
+      const scrollLeft4 = deliveryDetailTable.scrollLeft
+      this.$refs.deliveryDetailTable.$refs.bodyWrapper.scrollLeft = scrollLeft4
+      this.$refs.deliveryDetailTable.$refs.headerWrapper.scrollLeft = scrollLeft4
+    })
+  },
+  //设置表格表体高度自适应
+  updated() {
+    this.$nextTick(() => {
+      this.$refs.checkDetailsTable.$refs.footerWrapper.style.display = 'block';
+      this.$refs.packagingRecordsTable.$refs.footerWrapper.style.display = 'block';
+      this.$refs.deliveryScheduleTable.$refs.footerWrapper.style.display = 'block';
+      this.$refs.deliveryDetailTable.$refs.footerWrapper.style.display = 'block';
+      this.$refs.checkDetailsTable.doLayout();
+      this.$refs.packagingRecordsTable.doLayout();
+      this.$refs.deliveryScheduleTable.doLayout();
+      this.$refs.deliveryDetailTable.doLayout();
+    })
+  },
+  methods: {
+
+    toPrint(printId) {
+      if (this.selected.length != 1) {
+        Message.warning("请选择要打印的订单")
+        return false;
+      }
+      /**
+       * data为模板所需要参数
+       * 例如需要根据id查询模板数据
+       */
+
+      let data = {id: this.selected[0].id, orderNo: this.selected[0].orderNo, user: localStorage.getItem("user")}
+      const {href} = this.$router.resolve({
+        path: '/print',
+        query: {printId, ...data}
+      })
+      window.open(href, '_blank')
+    },
+    //键盘按下enter搜索事件
+    // keyupSubmit() {
+    //   document.onkeydown = e => {
+    //     const _key = window.event.keyCode
+    //     // console.log('345')
+    //     if (_key === 13) {
+    //       // console.log('123')
+    //       this.handleQuery();
+    //       // this.handleClick(this.activeName);
+    //     }
+    //   }
+    // },
+    //校验订单
+    async checkOrder(orderId) {
+      let result = await getCheckOrder({orderId: orderId})
+      if (result.code == 200) {
+        return true
+      } else {
+        this.$message({
+          message: res.msg,
+          type: 'error'
+        });
+        return false;
+      }
+    },
+    /* 各种查询条件查询 */
+    handleQuery() {
+      if (this.queryDetail.orderId || this.queryDetail.orderNo) {
+        //如果二级表有数据，只查询二级表
+        if (this.queryDetail.productName || this.queryDetail.highHead ||
+          this.queryDetail.position || this.queryDetail.remarks ||
+          this.queryDetail.requirement || this.queryDetail.wideHead) {
+          this.handleClick(this.activeName);
+        } else {
+          this.handleOrderList();
+        }
+      } else {
+        this.handleOrderList();
+      }
+    },
+
+    /* 一级、二级表单同时查询 */
+    handleOrderList() {
+      // console.log('订单')
+      if (this.preparationDateRange) {
+        this.queryParams.preparationDateStart = this.preparationDateRange[0];
+        this.queryParams.preparationDateEnd = this.preparationDateRange[1];
+      } else {
+        this.queryParams.preparationDateStart = '';
+        this.queryParams.preparationDateEnd = '';
+      }
+      listOrder(this.queryParams).then(response => {
+        // console.log('response', response)
+        if (response.code === 200) {
+          this.orderList = response.data;
+          // JSON.parse(JSON.stringify(this.sizeCheckColumn.slice(0)));
+          this.total = response.count;
+
+          if (this.orderList.length) {
+            console.log(this.orderList.length)
+            this.summation = [
+              {label: 'orderNum', title: '总数量', value: 0, unit: '片'},
+              {label: 'totalLengthen', title: '总周长', value: 0, unit: 'm'},
+              {label: 'totalArea', title: '总面积', value: 0, unit: 'm²'},
+              {label: 'totalWeigh', title: '总重量', value: 0, unit: 't'},
+              {label: 'orderAmount', title: '总金额', value: 0, unit: '元'},
+            ];
+            this.orderList.forEach(item => {
+              if (item.orderReview) {
+                item.dimensionsResult = item.orderReview.dimensionsResult;
+                item.orderResult = item.orderReview.orderResult;
+                item.workmanshipResult = item.orderReview.workmanshipResult;
+              }
+              this.summation.forEach(sumItem => {
+                if (item.hasOwnProperty(sumItem.label)) {
+                  sumItem.value += item[sumItem.label]
+                }
+                sumItem.value = keepThreeNum(sumItem.value);
+                if (sumItem.label === "orderAmount") {
+                  sumItem.value = keepOneNum(sumItem.value);
+                }
+              })
+            })
+            this.queryDetail.orderId = this.orderList.slice(0, 1)[0].id;
+            this.queryDetail.orderNo = this.orderList.slice(0, 1)[0].orderNo;
+            this.handleClick(this.activeName);
+          }
+        }
+      });
+    },
+    /* 重置 */
+    resetQuery() {
+      this.preparationDateRange = [];
+      this.queryParams = {
+        pageNum: 1,
+        pageSize: 20,
+        collectionStatus: '',
+        contactNumber: '',
+        contacts: '',
+        customNo: '',
+        customerName: '',
+        entryName: '',
+        id: '',
+        isCache: 0,
+        orderNo: '',
+        orderType: '',
+        packagingStatus: '',
+        preparationDateEnd: '',
+        preparationDateStart: '',
+        preparer: '',
+        productionStatus: '',
+        rackSplittingStatus: '',
+        shipmentStatus: '',       // createTime: undefined,
+        isDel: 0,
+      };
+      this.queryDetail = {
+        orderNo: '',
+        customNo: "",
+        customerName: "",
+        highHead: "",
+        id: "",
+        orderId: "",
+        position: "",
+        productName: "",
+        remarks: "",
+        requirement: "",
+        unitPrice: "",
+        wideHead: ""
+      };
+      this.activeName = 'checkDetails';
+      this.handleQuery();
+      // this.getOrderDetails();
+      let detailsTable = document.querySelector('.tabBtn');
+      let orderTable = document.querySelector('.orderTable');
+      detailsTable.style.height = 'calc(50% - 100px)';
+      orderTable.style.height = '50%';
+      this.tableSize = '最大化';
+      this.tableSizeIcon = 'el-icon-zoom-in';
+      this.tableFlag = false;
+      this.detailSize = '最大化';
+      this.detailSizeIcon = 'el-icon-zoom-in';
+      this.detailsFlag = false;
+    },
+    // 是否显示下拉框
+    isShowSelectOptions(isShowSelectOptions) {
+      if (!isShowSelectOptions) {
+        this.$refs.statusSelect.forEach(item => {
+          item.blur();
+          this.handleQuery();
+        })
+      }
+    },
+    /* 新增订单 */
+    handleAdd() {
+      this.$router.push('/sales/order/addOrder');
+      // this.$router.push('/sales/addOrder');
+    },
+    /* 编辑订单 */
+    async handleUpdate() {
+      // console.log(this.selected)
+      if (!this.selected || this.selected === [] || this.selected.length === 0) {
+        this.$message({
+          message: "请选择要修改的数据",
+          type: 'warning'
+        });
+      } else if (this.selected.length !== 1) {
+        this.$message({
+          message: "请选择一条数据进行修改",
+          type: 'warning'
+        });
+      } else {
+        if (await this.checkOrder(this.selected[0].id)) {
+          // this.$router.push({name: 'updateOrder', params: {orderInfo: this.selected[0]}});
+          this.$router.push('/sales/order/updateOrder/' + this.selected[0].id);
+        }
+      }
+    },
+    /* 废置订单 */
+    async handleDelete() {
+      if (!this.selected || this.selected === [] || this.selected.length === 0) {
+        this.$message({
+          message: '请至少选择一条数据',
+          type: 'warning'
+        });
+      } else {
+        if (await this.checkOrder(this.selected[0].id)) {
+          this.$confirm('此操作将废置选中数据,废置后的数据可在订单回收站中查看或还原，是否继续?', '提示', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning',
+          }).then(() => {
+            delOrder({orderId: this.selected[0].id}).then(res => {
+              if (res.code === 200) {
+                this.$message({
+                  type: 'success',
+                  message: res.msg
+                });
+                this.handleQuery();
+              } else {
+                this.$message({
+                  type: 'error',
+                  message: res.msg
+                });
+              }
+            })
+            this.selected = [];
+          }).catch(() => {
+            this.$message({
+              type: 'info',
+              message: '已取消废置'
+            });
+          });
+        }
+      }
+    },
+    /* 查看订单 */
+    async selectOrder() {
+      if (this.selected.length !== 1) {
+        this.$message({
+          message: "请选择一条要查看的数据",
+          type: 'warning'
+        });
+        return;
+      }
+      this.$router.push('/sales/order/selectOrder/' + this.selected[0].id);
+    },
+    /* 订单审核 */
+    async handleCheck() {
+      if (!this.selected || this.selected === [] || this.selected.length === 0) {
+        this.$message({
+          message: "请选择要审核的数据",
+          type: 'warning'
+        });
+      } else if (this.selected.length !== 1) {
+        this.$message({
+          message: "请选择一条数据进行审核",
+          type: 'warning'
+        });
+      } else {
+        // console.log(this.selected)
+        if (await this.checkOrder(this.selected[0].id)) {
+          this.$router.push('/sales/order/checkOrder/' + this.selected[0].id);
+        }
+      }
+    },
+    /* 消审 */
+    handleRemoveCheck() {
+      console.log(this.selected)
+      if (!this.selected || this.selected === [] || this.selected.length === 0) {
+        this.$message({
+          message: '请至少选择一条数据',
+          type: 'warning'
+        });
+      } else {
+        if (this.selected[0].orderReview.orderResult == 2) {
+          this.$message({
+            message: '订单未审核，无法执行此操作',
+            type: 'warning'
+          });
+        } else {
+          this.$confirm('此操作将消除选中数据审核，是否继续?', '提示', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning',
+            size: 'mini'
+          }).then(() => {
+            undoAudit({orderId: this.selected[0].id}).then(res => {
+              if (res.code === 200) {
+                this.$message({
+                  type: 'success',
+                  message: res.msg
+                });
+                this.handleQuery();
+              } else {
+                this.$message({
+                  type: 'error',
+                  message: res.msg
+                });
+              }
+            })
+            this.selected = [];
+          }).catch(() => {
+            this.$message({
+              type: 'info',
+              message: '已取消订单消审'
+            });
+          });
+        }
+
+      }
+    },
+    //删除流程卡
+    delFlow() {
+      if (!this.selected || this.selected === [] || this.selected.length === 0) {
+        this.$message({
+          message: '请至少选择一条数据',
+          type: 'warning'
+        });
+      } else {
+        if (this.selected[0].rackSplittingStatus === 0) {
+          Message.warning("当前订单未分架，无法删除流程卡");
+        } else {
+          this.$confirm('此操作将删除所选订单的所有流程卡，是否继续?', '提示', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning',
+            size: 'mini'
+          }).then(() => {
+            let ids = []
+            this.selected.forEach(item => {
+              ids.push(item.id)
+            })
+            delFlow({ids: ids.toString()}).then(res => {
+              if (res.code === 200) {
+                this.$message({
+                  type: 'success',
+                  message: res.msg
+                });
+                this.handleQuery();
+              } else {
+                this.$message({
+                  type: 'error',
+                  message: res.msg
+                });
+              }
+            })
+            this.selected = [];
+          }).catch(() => {
+            this.$message({
+              type: 'info',
+              message: '已取消删除流程卡'
+            });
+          });
+        }
+      }
+    },
+    /* 上传附件 */
+    handleUpload() {
+      if (!this.selected || this.selected === [] || this.selected.length === 0) {
+        this.$message({
+          message: "请选择要上传附件的数据",
+          type: 'warning'
+        });
+      } else if (this.selected.length !== 1) {
+        this.$message({
+          message: "请选择一条数据上传附件",
+          type: 'warning'
+        });
+      } else {
+        this.fileList = [];
+        this.uploadFileDialog = true;
+      }
+
+    },
+    uploadUrl: function () {
+      // 因为action参数是必填项，我们使用二次确认进行文件上传时，直接填上传文件的url会因为没有参数导致api报404，所以这里将action设置为一个返回为空的方法就行，避免抛错
+      return ''
+    },
+    // 上传文件之前的钩子, 参数为上传的文件,若返回 false 或者返回 Promise 且被 reject，则停止上传
+    // beforeUploadFile(file) {
+    //   let extension = file.name.substring(file.name.lastIndexOf('.') + 1)
+    //   let size = file.size / 1024 / 1024
+    //   // if (extension !== 'xlsx') {
+    //   //   this.$message.warning('只能上传后缀是.xlsx的文件')
+    //   // }
+    //   if (size > 10) {
+    //     this.$message.warning('文件大小不得超过10M')
+    //   }
+    // },
+    handleRemove(file, fileList) {
+      console.log(file, fileList);
+    },
+    fileChange(file) {
+      this.fileList = [];
+      this.fileList.push(file.raw);
+      // console.log(this.fileList)
+    },
+    // 文件超出个数限制时的钩子
+    // exceedFile(files, fileList) {
+    //   this.$message.warning(`只能选择 ${this.limitNum} 个文件，当前共选择了 ${files.length + fileList.length} 个`)
+    // },
+    // 文件上传成功时的钩子
+    // handleSuccess(res, file, fileList) {
+    //   //
+    //   if(res.code===200){
+    //     this.$message.success('文件上传成功');
+    //     this.fileList=[];
+    //   }
+    // },
+    // // 文件上传失败时的钩子
+    // handleError(err, file, fileList) {
+    //   if(res.code!==200){
+    //     this.$message.success('文件上传失败');
+    //     this.fileList=[];
+    //   }
+    // },
+    /* 上传文件 */
+    submitUpload() {
+      if (this.fileList.length <= 0) {
+        this.$message.error('请选择文件');
+        return
+      } else {
+        console.log("123" + JSON.stringify(this.fileList[0]))
+        let form = new FormData()
+        form.append('file', this.fileList[0])
+        form.append('orderId', this.selected[0].id)
+        uploadEnclosure(form).then(res => {
+          // console.log(res)
+          if (res.code === 200) {
+            this.$message({
+              message: '附件上传成功',
+              type: 'success'
+            });
+            this.uploadFileDialog = false;
+            this.fileList = [];
+            this.getQueryEnclosure();
+          }
+          this.uploadFileDialog = false;
+          this.fileList = [];
+        })
+      }
+
+    },
+    /* 取消 */
+    cancelUpload() {
+      this.uploadFileDialog = false;
+      this.fileList = []
+    },
+    handleClose(done) {
+      this.uploadFileDialog = false;
+      this.fileList = []
+    },
+    /* 调整订单表格最大化 */
+    changeTableHeight() {
+      let orderTable = document.querySelector('.orderTable');
+      if (this.tableFlag) {
+        this.tableSizeIcon = 'el-icon-zoom-in';
+        this.tableSize = '最大化';
+        orderTable.style.height = '50%';
+      }
+      if (!this.tableFlag) {
+        this.tableSizeIcon = 'el-icon-zoom-out';
+        this.tableSize = '还原';
+        orderTable.style.height = 'calc(100% - 100px)';
+      }
+      this.tableFlag = !this.tableFlag;
+    },
+    /* 最大化弹窗 */
+    handleMaximize() {
+      let detailsTable = document.querySelector('.tabBtn');
+      let orderTable = document.querySelector('.orderTable');
+      if (this.detailsFlag) {
+        this.detailSizeIcon = 'el-icon-zoom-in';
+        this.detailSize = '最大化';
+        detailsTable.style.height = 'calc(50% - 100px)';
+        orderTable.style.height = '50%';
+        // this.handleSearch(this.queryParams);
+      }
+      if (!this.detailsFlag) {
+        this.detailSizeIcon = 'el-icon-zoom-out';
+        this.detailSize = '还原';
+        detailsTable.style.height = 'calc(65% - 100px)';
+        orderTable.style.height = '35%';
+      }
+      this.detailsFlag = !this.detailsFlag;
+    },
+    /* 选中数据 */
+    handleSelectionChange(val) {
+
+      // 清除 所有勾选项
+      if (val.length === 1) {
+        this.selected = val;
+        this.queryDetail.orderId = val[0].id;
+        this.queryDetail.orderNo = this.selected[0].orderNo;
+        this.handleClick(this.activeName)
+      }
+      if (val.length > 1) {
+        this.$refs.multipleTable.clearSelection();
+        this.$refs.multipleTable.toggleRowSelection(val.at(-1), true);
+        this.selected = val.slice(-1);
+        this.queryDetail.orderId = this.selected[0].id;
+        this.queryDetail.orderNo = this.selected[0].orderNo;
+        this.handleClick(this.activeName)
+      }
+      if (val.length === 0) {
+        this.selected = [];
+      }
+      // console.log('this.selected', this.selected)
+    },
+    /* 翻页后序号连贯 */
+    getIndex($index) {
+      //  表格序号
+      return (this.pageNum - 1) * this.pageSize + $index + 1;
+    },
+    /* 行点击事件 */
+    handleRowClick(row, column, event) {
+      this.$refs.multipleTable.toggleRowSelection(row, column)
+      // console.log( row,column,event)
+    },
+    cellName({row, column, rowIndex, columnIndex}) {
+      // console.log(row)
+      //如果交货时间小于当前时间，则交货日期显示为红色
+      // let receiptDate = new Date(
+      //   Date.parse(row.receiptDate.replace(/-/g, '/'))
+      // ).getTime();
+      let receiptDate = new Date(row.receiptDate).getTime();
+      if (column.property === 'receiptDate' && receiptDate < Date.now() && row.shipmentStatus == 0) {
+        // console.log(row)
+        // ("分架状态（0未分架，1部分分架，2分架完成）")
+        return 'noReceiptDate'
+      }
+      if (column.property === 'receiptDate' && receiptDate < Date.now() && row.shipmentStatus == 1) {
+        // console.log(row)
+        // ("分架状态（0未分架，1部分分架，2分架完成）")
+        return 'partReceiptDate'
+      }
+    },
+    /* 合计行方法 */
+    getSummariesOrder(param) {
+      const {columns, data} = param;
+      const sums = [];
+      columns.forEach((column, index) => {
+        if (index === 0) {
+          sums[index] = '合计';
+          return;
+        }
+        const values = data.map(item => Number(item[column.property]));
+        if (column.property === 'orderNum' || column.property === 'totalArea' || column.property === 'orderAmount' || column.property === 'totalWeigh'
+          || column.property === 'productAmount' || column.property === 'productWeight' || column.property === 'num' || column.property === 'lengthen'
+          || column.property === 'productArea' || column.property === 'packNum' || column.property === 'allDeliverNum' || column.property === 'deliverArea'
+          || column.property === 'deliverCost' || column.property === 'deliverWeight' || column.property === 'deliverWeight' || column.property === 'orderDeliverNum') {
+          sums[index] = keepThreeNum(values.reduce((prev, curr) => {
+            const value = Number(curr);
+            if (!isNaN(value)) {
+              return prev + curr;
+            } else {
+              return prev;
+            }
+          }, 0));
+          sums[index] += '';
+        } else {
+          sums[index] = '';
+        }
+      });
+      return sums;
+    },
+    /* 分页器 */
+    handleChange(pageSize, pageNum) {
+      // console.log(pageSize, pageNum)
+      this.pageSize = pageSize;
+      this.pageNum = pageNum;
+      this.queryParams.pageSize = this.pageSize;
+      this.queryParams.pageNum = this.pageNum;
+      this.handleQuery();
+    },
+    /* 获取订单明细 */
+    getOrderDetails() {
+      // console.log( this.currentOrderId)
+      listProduct(this.queryDetail).then(response => {
+        // if (response.code === 200) {
+        this.orderDetails = response.data;
+      })
+    },
+    /* 获取订单工艺 */
+    getOrderProcess() {
+      listProcess({
+        orderId: this.queryDetail.orderId,
+      }).then(response => {
+        // if (response.code === 200) {
+        this.orderProcess = response.data;
+        // console.log('444', this.orderProcess)
+        // 设定一个数组spanArr/contentSpanArr来存放要合并的格数，同时还要设定一个变量pos/position来记录
+        this.spanArr = [];
+        this.contentSpanArr = [];
+        for (var i = 0; i < this.orderProcess.length; i++) {
+          if (i === 0) {
+            this.spanArr.push(1);
+            this.pos = 0;
+            this.contentSpanArr.push(1);
+            this.position = 0;
+          } else {
+            // 判断当前元素与上一个元素是否相同(第1和第2列)
+            if (this.orderProcess[i].productName === this.orderProcess[i - 1].productName &&
+              this.orderProcess[i].itemWide === this.orderProcess[i - 1].itemWide &&
+              this.orderProcess[i].itemHigh === this.orderProcess[i - 1].itemHigh) {
+              this.spanArr[this.pos] += 1;
+              this.spanArr.push(0);
+            } else {
+              this.spanArr.push(1);
+              this.pos = i;
+            }
+          }
+        }
+      })
+    },
+    /* 获取附属文件 */
+    getQueryEnclosure() {
+      queryEnclosure({
+        orderId: this.queryDetail.orderId,
+      }).then(res => {
+        this.subsidiaryFile = res.data
+      })
+    },
+    /* 获取哦流程卡进度 */
+    getFlowData() {
+      this.params = {
+        orderNo: this.queryDetail.orderNo,
+        pageSize: 10000,
+        pageNum: 1
+      }
+      queryList(this.params).then(res => {
+        this.flowCardData = res.data;
+        if (this.flowCardData) {
+          this.flowCardData.forEach(item => {
+            if (!item.damageNum) {
+              item.damageNum = 0;
+            }
+            if (!item.patchNum) {
+              item.patchNum = 0;
+            }
+            if (!item.schedulingNum) {
+              item.schedulingNum = 0;
+            }
+          })
+        }
+      })
+    },
+    /* 获取打包明细 */
+    getPackData() {
+      queryPack({id: this.queryDetail.orderId}).then(res => {
+        this.packData = res.data;
+      })
+    },
+    /* 获取发货进度 */
+    getDeliverProgress() {
+      queryDeliverProgress({id: this.queryDetail.orderId}).then(res => {
+        this.deliverProgressData = res.data;
+      })
+    },
+    /* 获取发货明细 */
+    getDeliverBus() {
+      queryDeliverBus({id: this.queryDetail.orderId}).then(res => {
+        this.deliverBusData = res.data;
+      })
+    },
+    /* 移除附属文件 */
+    deleteRowFile(row) {
+      this.$confirm('此操作将移除选中数据，是否继续?', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }).then(() => {
+        delEnclosure({
+          id: row.id,
+        }).then(res => {
+          if (res.code === 200) {
+            this.$message({
+              message: res.msg,
+              type: 'success'
+            });
+            this.getQueryEnclosure()
+          }
+        })
+        this.selected = [];
+      }).catch(() => {
+        this.$message({
+          type: 'info',
+          message: '已取消移除'
+        });
+      });
+
+    },
+    /* 下载附属文件 */
+    handeLoadFile(row) {
+      this.download('sales/orderEnclosure/downloadEnclosure', {
+        id: row.id
+      }, row.fileName)
+    },
+    /* 合并行  查看工艺 */
+    processSpanMethod({row, column, rowIndex, columnIndex}) {
+      if (columnIndex === 1 || columnIndex === 2 || columnIndex === 3) {
+        const _row = this.spanArr[rowIndex];
+        const _col = _row > 0 ? 1 : 0;
+        return {
+          rowspan: _row,
+          colspan: _col
+        };
+      }
+    },
+    /* tab切换 */
+    handleClick(tab, event) {
+      if (this.activeName === 'checkDetails') {
+        this.getOrderDetails();
+      }
+      if (this.activeName === 'checkProcess') {
+        this.getOrderProcess();
+      }
+      if (this.activeName === 'subsidiaryFile') {
+        this.getQueryEnclosure()
+      }
+      if (this.activeName === 'cardProgress') {
+        this.getFlowData()
+      }
+      if (this.activeName === 'packagingRecords') {
+        this.getPackData()
+      }
+      if (this.activeName === 'deliverySchedule') {
+        this.getDeliverProgress()
+      }
+      if (this.activeName === 'deliveryDetail') {
+        this.getDeliverBus()
+      }
+
+    },
+    //导出任务单
+    exportTask() {
+      if (!this.selected || this.selected === [] || this.selected.length === 0) {
+        this.$message({
+          message: '请选择一条数据',
+          type: 'warning'
+        });
+      } else if (this.selected.length !== 1) {
+        this.$message({
+          message: '请选择一条数据',
+          type: 'warning'
+        });
+      } else {
+        exportTask({orderId: this.selected[0].id}).then(res => {
+          saveFile(res)
+        })
+      }
+    },
+    //导出条目数据
+    exportOrder(param) {
+      let ids = [];
+      if (this.selected.length > 0) {
+        this.selected.forEach(item => {
+          ids.push(item.id)
+        })
+      }
+      if (param === 0) {//导出订单
+        this.download('sales/order/exportOrder', {
+          ids: ids.toString()
+        }, `订单数据.xlsx`)
+      } else if (param === 1) {//导出产品
+        this.download('sales/orderProduct/exportProduct', {
+          ids: ids.toString()
+        }, `订单产品数据.xlsx`)
+      } else if (param === 2){//全部导出
+        if (this.selected.length !== 1) {
+          this.$message.warning("请选择一条订单的数据。")
+          return;
+        }
+        this.isUpdateName = true;
+        this.printName = this.selected[0].customerName + "[" + this.selected[0].orderNo + "]";
+      }
+    },
+    //导出机器相关excel
+    exportData() {
+      this.download('/sales/orderProduct/exportMachineFlow', {
+        id: this.selected[0].id
+      }, this.printName + ".xlsx")
+      this.isUpdateName = false;
+    },
+  }
+}
+</script>
+
+<style lang="scss" scoped>
+
+//@import "//at.alicdn.com/t/c/font_3565604_rxf99wgc7gh.css";
+::v-deep .orderTable {
+  height: 50%;
+
+  .noReceiptDate {
+    .cell {
+      color: red;
+    }
+  }
+
+  .partReceiptDate {
+    .cell {
+      color: #FF9232;
+    }
+  }
+
+  .el-icon-check, .icon-dkw_wancheng {
+    color: #22AC38
+  }
+
+  .el-icon-close {
+    color: #FF0000
+  }
+
+  .icon-weiwancheng {
+    color: #0066DC
+  }
+
+  i, .iconfont {
+    font-weight: 600;
+    font-size: 16px;
+    margin-right: 0;
+  }
+}
+
+.tabBtn {
+  width: 100%;
+  height: calc(50% - 100px);
+  position: relative;
+
+  .el-button {
+    position: absolute;
+    right: 10px;
+    top: 5px;
+  }
+}
+
+::v-deep .el-tabs {
+  height: 100%;
+
+  .el-tabs__content {
+    height: calc(100% - 55px);
+
+    .el-tab-pane {
+      height: 100%;
+
+      .rightTable {
+        height: 100%;
+
+        .table {
+          height: 100%;
+        }
+
+        .page {
+          display: none;
+        }
+      }
+
+      .subsidiaryFile {
+        td:last-of-type {
+          .cell {
+            justify-content: center;
+
+            .el-button {
+              width: 40%;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+::v-deep .uploadFileDialog {
+  .el-dialog {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+}
+
+</style>

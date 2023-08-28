@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.erp.floor.mapper.produce.CompletionRecordMapper">
+
+    <resultMap type="CompletionRecord" id="CompletionRecordResult">
+        <id property="id" column="id"/>
+        <result property="completionNo" column="completion_no"/>
+        <result property="completionCraftName" column="completion_craft_name"/>
+        <result property="completionCraftId" column="completion_craft_id"/>
+        <result property="completionShift" column="completion_shift"/>
+        <result property="completionTeam" column="completion_team"/>
+        <result property="completionNum" column="completion_num"/>
+        <result property="completionDate" column="completion_date"/>
+        <result property="flowCardNo" column="flow_card_no"/>
+        <result property="createdPerson" column="created_person"/>
+        <result property="createdAt" column="created_at"/>
+        <collection property="completionPersonList" javaType="java.util.List" resultMap="completionPersonMap"/>
+        <collection property="completionBusinessList" javaType="java.util.List" resultMap="completionBusinessMap"/>
+    </resultMap>
+
+    <resultMap id="completionPersonMap" type="CompletionPerson">
+        <result property="id" column="id"/>
+        <result property="completionPerson" column="completion_person"/>
+        <result property="completionPersonId" column="completion_person_id"/>
+        <result property="completionRecordId" column="completion_record_id"/>
+        <result property="completionProportion" column="completion_proportion"/>
+        <result property="completionCoefficient" column="completion_coefficient"/>
+    </resultMap>
+
+    <resultMap id="completionBusinessMap" type="CompletionBusiness">
+        <result property="id" column="id"/>
+        <result property="recordId" column="record_id"/>
+        <result property="productId" column="product_id"/>
+        <result property="flowCardNo" column="flow_card_no"/>
+        <result property="num" column="num"/>
+        <result property="status" column="status"/>
+        <result property="craft" column="craft"/>
+        <result property="itemSurface" column="item_surface"/>
+        <result property="semiProductId" column="semi_product_id"/>
+        <association property="flowCard" javaType="FlowCard">
+            <result property="id" column="id"/>
+            <result property="flowCardNo" column="flow_card_no"/>
+            <result property="orderNo" column="order_no"/>
+            <result property="customNo" column="custom_no"/>
+            <result property="productName" column="product_name"/>
+            <result property="customerName" column="customer_name"/>
+            <result property="monolithicName" column="monolithic_name"/>
+            <result property="monolithicThick" column="monolithic_thick"/>
+            <result property="processContent" column="process_content"/>
+            <result property="splitDate" column="split_date"/>
+            <result property="splitPerson" column="split_person"/>
+            <result property="splitNum" column="split_num"/>
+            <result property="damageNum" column="damage_num"/>
+            <result property="patchNum" column="patch_num"/>
+            <result property="patchId" column="patch_id"/>
+            <result property="patchFlowCardId" column="patch_flow_card_id"/>
+            <result property="patchFlowCardNo" column="patch_flow_card_no"/>
+            <result property="totalArea" column="total_area"/>
+            <result property="totalWeight" column="total_weight"/>
+            <result property="productionStatus" column="production_status"/>
+            <result property="completeProcess" column="complete_process"/>
+            <result property="schedulingId" column="scheduling_id"/>
+            <result property="schedulingDate" column="scheduling_date"/>
+            <result property="schedulingNum" column="scheduling_num"/>
+            <result property="deliveryNo" column="delivery_no"/>
+            <result property="deliveryPeople" column="delivery_people"/>
+            <result property="deliveryDate" column="delivery_date"/>
+        </association>
+    </resultMap>
+
+    <select id="selectCompletionRecordList" parameterType="HashMap" resultMap="CompletionRecordResult">
+        select
+            r.id,r.completion_no,r.completion_craft_name,r.completion_craft_id,r.completion_shift,r.completion_team,r.completion_num,r.completion_date,r.flow_card_no,r.remarks,r.created_person,r.created_at,
+            p.id as pid,p.completion_person,p.completion_person_id,p.completion_record_id,p.completion_proportion,p.completion_coefficient,
+            b.id as bid,b.record_id,b.product_id,b.num,b.status,b.craft,b.item_surface,b.semi_product_id,
+            f.id,f.flow_card_no,f.order_no,f.custom_no,f.product_name,f.customer_name,f.monolithic_name,f.monolithic_thick,f.process_content,f.split_date,f.split_person,f.split_num,f.damage_num,f.patch_num,f.patch_id,f.patch_flow_card_id,f.patch_flow_card_no,f.total_area,f.total_weight,f.production_status,f.complete_process,f.scheduling_id,f.scheduling_date,f.scheduling_num,f.delivery_no,f.delivery_people,f.delivery_date
+        from
+            (
+                select * from completion_record
+                where 1=1
+                <if test="beginDate != null and beginDate != ''"><!-- 开始时间检索 -->
+                    AND date_format(completion_date,'%y%m%d') &gt;= date_format(#{beginDate},'%y%m%d')
+                </if>
+                <if test="endDate != null and endDate != ''"><!-- 结束时间检索 -->
+                    AND date_format(completion_date,'%y%m%d') &lt;= date_format(#{endDate},'%y%m%d')
+                </if>
+                <if test="completionNo != null and completionNo != ''">
+                    AND completion_no like CONCAT('%',#{completionNo},'%')
+                </if>
+                <if test="flowCardNo != null and flowCardNo != ''">
+                    AND flow_card_no like CONCAT('%',#{flowCardNo},'%')
+                </if>
+                <if test="completionCraftName != null and completionCraftName != ''">
+                    AND completion_craft_id = #{completionCraftName}
+                </if>
+                <if test="completionShift != null and completionShift != ''">
+                    AND completion_shift = #{completionShift}
+                </if>
+                <if test="completionTeam != null and completionTeam != ''">
+                    AND completion_team = #{completionTeam}
+                </if>
+                limit ${startIndex},${endIndex}
+            ) r
+        left join completion_person p on r.id = p.completion_record_id
+        left join completion_business b on  b.record_id = r.id
+        left join flow_card f on f.flow_card_no = b.flow_card_no
+        order by r.created_at desc
+    </select>
+</mapper>

@@ -1,0 +1,384 @@
+import Vue from 'vue'
+import Router from 'vue-router'
+
+Vue.use(Router)
+
+/* Layout */
+import Layout from '@/layout'
+
+/**
+ * Note: 路由配置项
+ *
+ * hidden: true                     // 当设置 true 的时候该路由不会再侧边栏出现 如401，login等页面，或者如一些编辑页面/edit/1
+ * alwaysShow: true                 // 当你一个路由下面的 children 声明的路由大于1个时，自动会变成嵌套的模式--如组件页面
+ *                                  // 只有一个时，会将那个子路由当做根路由显示在侧边栏--如引导页面
+ *                                  // 若你想不管路由下面的 children 声明的个数都显示你的根路由
+ *                                  // 你可以设置 alwaysShow: true，这样它就会忽略之前定义的规则，一直显示根路由
+ * redirect: noRedirect             // 当设置 noRedirect 的时候该路由在面包屑导航中不可被点击
+ * name:'router-name'               // 设定路由的名字，一定要填写不然使用<keep-alive>时会出现各种问题
+ * query: '{"id": 1, "name": "ry"}' // 访问路由的默认传递参数
+ * roles: ['admin', 'common']       // 访问路由的角色权限
+ * permissions: ['a:a:a', 'b:b:b']  // 访问路由的菜单权限
+ * meta : {
+    noCache: true                   // 如果设置为true，则不会被 <keep-alive> 缓存(默认 false)
+    title: 'title'                  // 设置该路由在侧边栏和面包屑中展示的名字
+    icon: 'svg-name'                // 设置该路由的图标，对应路径src/assets/icons/svg
+    breadcrumb: false               // 如果设置为false，则不会在breadcrumb面包屑中显示
+    activeMenu: '/system/user'      // 当路由设置了该属性，则会高亮相对应的侧边栏。
+  }
+ */
+
+// 公共路由
+export const constantRoutes = [
+  // {
+  //   path: '/verification',
+  //   component: () => import('@/views/verification'),
+  //   hidden: true
+  // },
+  {
+    path: '/redirect',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '/redirect/:path(.*)',
+        component: () => import('@/views/redirect')
+      }
+    ]
+  },
+  {
+    path: '/login',
+    component: () => import('@/views/login'),
+    hidden: true
+  },
+  {
+    path: '/print',
+    component: () => import('@/views/print/index'),
+    hidden: true
+  },
+  {
+    path: '/404',
+    component: () => import('@/views/error/404'),
+    hidden: true
+  },
+  {
+    path: '/401',
+    component: () => import('@/views/error/401'),
+    hidden: true
+  },
+  {
+    // path: '/pdf/:id',
+    // component: Layout,
+    // hidden: true,
+    // children: [
+    //   {
+        path: '/pdf',
+        component: () => import('@/views/pdf/browseThePDF'),
+        name: 'onlinePreview',
+        // meta: {title: '在线预览', icon: ''}
+    //   }
+    // ]
+  },
+  {
+    path: '',
+    component: Layout,
+    redirect: 'index',
+    children: [
+      {
+        path: 'index',
+        component: () => import('@/views/index'),
+        name: 'Index',
+        meta: {title: '首页', icon: 'dashboard', affix: true}
+      }
+    ]
+  },
+  {
+    path: '/screen',
+    component: () => import('@/views/screen/index'),
+    hidden: true
+  },
+  {
+    path: '/user',
+    component: Layout,
+    hidden: true,
+    redirect: 'noredirect',
+    children: [
+      {
+        path: 'profile',
+        component: () => import('@/views/config/user/profile/index'),
+        name: 'Profile',
+        meta: {title: '个人中心', icon: 'user'}
+      }
+    ]
+  },
+  {
+    path: '/sales/order/selectOrder',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '/sales/order/selectOrder/:id',
+        component: () => import('@/views/sales/order/selectOrder/index'),
+        name: 'selectOrder',
+        meta: {title: '销售订单 / 订单管理 / 查看订单'}
+      }
+    ]
+  },
+  {
+    path: '/sales/collection/selectOrder',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '/sales/collection/selectOrder/:id',
+        component: () => import('@/views/sales/collection/detail/index'),
+        name: 'collectionSelectOrder',
+        meta: {title: '销售订单 / 收款管理 / 查看订单明细'}
+      }
+    ]
+  },
+  {
+    path: '/sales/order/addOrder',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '/sales/order/addOrder',
+        component: () => import('@/views/sales/order/addOrder/index'),
+        name: 'addOrder',
+        meta: {title: '销售订单 / 订单管理 / 新增订单'}
+      }
+    ]
+  },
+  {
+    path: '/sales/order/updateOrder',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '/sales/order/updateOrder/:id',
+        component: () => import('@/views/sales/order/updateOrder/index'),
+        name: 'updateOrder',
+        meta: {title: '销售订单 / 订单管理 / 编辑订单'}
+      },
+    ]
+  },
+  {
+    path: '/sales/order/checkOrder',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '/sales/order/checkOrder/:id',
+        component: () => import('@/views/sales/order/checkOrder/index'),
+        name: 'checkOrder',
+        meta: {title: '销售订单 / 订单管理 / 审核订单'}
+      }
+    ]
+  },
+  {
+    path: '/sales/flowCard/addFlowCard',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '/sales/flowCard/addFlowCard',
+        component: () => import('@/views/sales/flowCard/addFlowCard/index'),
+        name: 'addFlowCard',
+        meta: {title: '销售订单 / 流程卡管理 / 新增流程卡'}
+      }
+    ]
+  },
+  /*在线预览PDF.js*/
+  // {
+  //   path: '/pdf/:id',
+  //   component: Layout,
+  //   hidden: true,
+  //   children: [
+  //     {
+  //       path: '/pdf/:id',
+  //       component: () => import('@/views/pdf/browseThePDF'),
+  //       name: 'onlinePreview',
+  //       meta: {title: '在线预览', icon: ''}
+  //     }
+  //   ]
+  // },
+  {
+    path: '/sales/deliver/addDeliver',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '/sales/deliver/addDeliver',
+        component: () => import('@/views/sales/deliver/addDeliver/index'),
+        name: 'addDeliver',
+        meta: {title: '销售订单 / 发货管理 / 新增发货'}
+      }
+    ]
+  },
+  {
+    path: '/sales/deliver/updateDeliver',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '/sales/deliver/updateDeliver/:id',
+        component: () => import('@/views/sales/deliver/updateDeliver/index'),
+        name: 'updateDeliver',
+        meta: {title: '销售订单 / 发货管理 / 编辑发货'}
+      }
+    ]
+  },
+  {
+    path: '/sales/outsourced/entryRecords',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '/sales/outsourced/entryRecordes',
+        component: () => import('@/views/sales/outsourced/entryRecords'),
+        name: 'entryRecords',
+        meta: {title: '销售订单 / 外协管理 / 入库记录'}
+      }
+    ]
+  },
+  {
+    path: '/production/finished/operationRecord',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '/production/finished/operationRecord',
+        component: () => import('@/views/production/finished/operationRecord'),
+        name: 'operationRecord',
+        meta: {title: '生产管理 / 成品库存 / 操作记录'}
+      }
+    ]
+  },
+  {
+    path: '/production/completion/addCompletion',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '/production/completion/addCompletion',
+        component: () => import('@/views/production/completion/addCompletion/index'),
+        name: 'addCompletion',
+        meta: {title: '生产管理 / 完工管理 / 新增完工'}
+      }
+    ]
+  },
+  {
+    path: '/production/completion/editCompletion',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '/production/completion/editCompletion',
+        component: () => import('@/views/production/completion/editCompletion/index'),
+        name: 'editCompletion',
+        meta: {title: '生产管理 / 完工管理 / 编辑完工'}
+      }
+    ]
+  },
+  {
+    path: '/original/originalWarehouse/entryRecords',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '/original/originalWarehouse/entryRecords',
+        component: () => import('@/views/original/originalWarehouse/entryRecords'),
+        name: 'originalEntryRecords',
+        meta: {title: '原片管理 / 原片仓库 / 入库记录'}
+      }
+    ]
+  },
+  {
+    path: '/original/originalWarehouse/outboundRecords',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '/original/originalWarehouse/outboundRecords',
+        component: () => import('@/views/original/originalWarehouse/outboundRecords'),
+        name: 'originalOutboundRecords',
+        meta: {title: '原片管理 / 原片仓库 / 出库记录'}
+      }
+    ]
+  },
+  {
+    path: '/original/originalWarehouse/checkNumRecords',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '/original/originalWarehouse/checkNumRecords',
+        component: () => import('@/views/original/originalWarehouse/checkNumRecords'),
+        name: 'checkNumRecords',
+        meta: {title: '原片管理 / 原片仓库 / 盘库记录'}
+      }
+    ]
+  },
+  {
+    path: '/accessories/accessoriesWarehouse/entryRecords',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '/accessories/accessoriesWarehouse/entryRecords',
+        component: () => import('@/views/accessories/accessoriesWarehouse/entryRecords'),
+        name: 'accessoriesEntryRecords',
+        meta: {title: '辅料管理 / 辅料仓库 / 入库记录'}
+      }
+    ]
+  },
+  {
+    path: '/accessories/accessoriesWarehouse/outboundRecords',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '/accessories/accessoriesWarehouse/outboundRecords',
+        component: () => import('@/views/accessories/accessoriesWarehouse/outboundRecords'),
+        name: 'accessoriesOutboundRecords',
+        meta: {title: '辅料管理 / 辅料仓库 / 出库记录'}
+      }
+    ]
+  },
+  {
+    path: '/accessories/accessoriesWarehouse/checkNumRecords',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '/accessories/accessoriesWarehouse/checkNumRecords',
+        component: () => import('@/views/accessories/accessoriesWarehouse/checkNumRecords'),
+        name: 'checkNumRecords',
+        meta: {title: '辅料管理 / 辅料仓库 / 盘库记录'}
+      }
+    ]
+  },
+  /*{
+    path: '/pdf/:id',
+    hidden: true,
+    component: () => import('@/views/pdf/browseThePDF'),
+    meta: {title: '在线预览', icon: ''}
+  },*/
+]
+
+
+// 动态路由，基于用户权限动态去加载
+export const dynamicRoutes = []
+
+// 防止连续点击多次路由报错
+let routerPush = Router.prototype.push;
+Router.prototype.push = function push(location) {
+  return routerPush.call(this, location).catch(err => err)
+}
+
+export default new Router({
+  mode: 'hash', // 去掉url中的#
+  scrollBehavior: () => ({y: 0}),
+  routes: constantRoutes
+})

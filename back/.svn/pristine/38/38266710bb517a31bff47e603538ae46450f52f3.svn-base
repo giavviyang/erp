@@ -1,0 +1,1275 @@
+<template>
+  <div class="app-container-padding">
+    <el-form :model="queryParams" ref="queryForm" size="mini" :inline="true" class="iptAndBtn">
+      <el-form-item label="外发日期" class="daterange">
+        <el-date-picker
+          v-model="receiptDateRange"
+          type="daterange"
+          range-separator="至"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
+          value-format="yyyy-MM-dd"  @change="handleQuery">
+        </el-date-picker>
+      </el-form-item>
+      <el-button type="primary" icon="el-icon-search" size="mini" @click="handleQuery">搜索</el-button>
+      <el-button icon="el-icon-refresh" size="mini" @click="resetQuery">重置</el-button>
+    </el-form>
+    <div class="btn">
+      <el-button
+        type="primary"
+        icon="el-icon-s-order"
+        size="mini"
+        v-hasPermi="['sales:outsourced:detailedView']"
+        @click="handleDetails"
+      >查看明细
+      </el-button>
+      <el-button
+        type="primary"
+        icon="el-icon-plus"
+        size="mini"
+        v-hasPermi="['sales:outsourced:add']"
+        @click="handleAdd">新增外协
+      </el-button>
+      <el-button
+        type="primary"
+        icon="el-icon-edit"
+        size="mini"
+        @click="handleUpdate"
+        v-hasPermi="['sales:outsourced:edit']">编辑外协
+      </el-button>
+      <el-button
+        type="primary"
+        icon="el-icon-delete"
+        size="mini"
+        @click="handleDelete"
+        v-hasPermi="['sales:outsourced:delOutsourced']">删除外协
+      </el-button>
+      <el-button
+        type="primary"
+        icon="el-icon-document-checked"
+        size="mini"
+        @click="handleCheck"
+        v-hasPermi="['sales:outsourced:outsourcedExamine']">外协审核
+      </el-button>
+      <el-button
+        type="primary"
+        icon="el-icon-document-delete"
+        size="mini"
+        @click="handleRemoveCheck"
+        v-hasPermi="['sales:outsourced:calExamine']">外协消审
+      </el-button>
+      <el-button
+        type="primary"
+        size="mini"
+        v-hasPermi="['sales:outsourced:enter']"
+        @click="handleEntry"><i class="iconfont icon-ruku"></i>外协单入库
+      </el-button>
+      <el-button
+        type="primary"
+        size="mini"
+        @click="handleRecord"
+        v-hasPermi="['sales:outsourced:record']"><i class="iconfont icon-churukujilu"></i>入库记录
+      </el-button>
+      <el-dropdown @command="toPrint">
+        <el-button type="primary" size="mini" icon="el-icon-printer"  v-hasPermi="['sales:outsourced:print']">
+          打印<i class="el-icon-arrow-down el-icon--right"></i>
+        </el-button>
+        <el-dropdown-menu slot="dropdown">
+          <!-- 跳转打印页面时 传入模板id-->
+          <el-dropdown-item command="a8da4c6d0aba714a11242324edb4d981" icon="el-icon-printer" >打印</el-dropdown-item>
+        </el-dropdown-menu>
+      </el-dropdown>
+      <el-dropdown>
+        <el-button type="primary" size="mini" icon="el-icon-printer" v-hasPermi="['sales:outsourced:exportOutsourcedDetailed']">
+          导出<i class="el-icon-arrow-down el-icon--right"></i>
+        </el-button>
+        <el-dropdown-menu slot="dropdown">
+          <el-dropdown-item @click.native="exportOrder(0)" >导出外协</el-dropdown-item>
+          <el-dropdown-item @click.native="exportOrder(1)" >导出外协明细</el-dropdown-item>
+        </el-dropdown-menu>
+      </el-dropdown>
+    </div>
+    <count-table class="rightTable" @handleChange="handleChange" :pageSize="queryParams.pageSize"
+                 :pageNum="queryParams.pageNum"
+                 :total="total" :summation="summation">
+      <el-table highlight-current-row
+        :data="outsourcedList"
+        stripe
+        border
+        style="width: 100%"
+        height="100%"
+        ref="multipleTable"
+        @selection-change="handleSelectionChange"
+        @row-click="handleRowClick"
+        slot="table">
+        <el-table-column
+          type="selection"
+          width="55">
+        </el-table-column>
+        <el-table-column
+          :index="getIndex"
+          type="index"
+          label="序号"
+          width="55" show-overflow-tooltip>
+        </el-table-column>
+        <el-table-column
+          v-for="(item,index) in outsourcedListColumn"
+          :key="index"
+          :label="item.label"  show-overflow-tooltip>
+          <el-table-column :prop="item.prop" :min-width="item.width"  show-overflow-tooltip>
+            <template #header scoped-slot="scope">
+              <!--可根据类型来显示为搜索框、下拉框等-->
+              <el-input v-if="item.type==='ipt'"
+                        v-model="queryParams[item.prop]"
+                        size="mini"
+                        placeholder="请输入"
+                        clearable @keyup.enter.native="handleQuery"/>
+<!--              <el-select v-if="item.type=='select'" v-model="queryParams[item.prop]" placeholder='请选择' clearable-->
+<!--                         size="mini">-->
+<!--              </el-select>-->
+            </template>
+          </el-table-column>
+        </el-table-column>
+      </el-table>
+    </count-table>
+    <!--  查看明细弹窗  -->
+    <el-dialog title='查看明细'
+               :visible.sync="detailDialog" width="80%" class="dialog-style detailDialog"
+               :close-on-click-modal="false" :close-on-press-escape="false">
+      <div class="detailsInfo">
+        <p v-for="(item,index) in detailsInfo" :key="index">{{ item.title }}：<span>{{ item.value }}</span></p>
+      </div>
+      <slot-table class="detailsTable">
+        <el-table highlight-current-row
+          :data="detailDialogData"
+          border
+          stripe
+          height="100%"
+          style="width: 100%" slot="table">
+          <el-table-column
+            type="index"
+            label="序号"
+            width="50">
+          </el-table-column>
+          <el-table-column
+            v-for="(item,index) in detailDialogColumns"
+            :key="index"
+            :prop="item.prop"
+            :label="item.label"
+            :min-width="item.width"
+            show-overflow-tooltip></el-table-column>
+        </el-table>
+      </slot-table>
+    </el-dialog>
+    <!--  新增、编辑外协  -->
+    <el-dialog :title="dialogType=='add'?'新增外协':dialogType=='edit'?'编辑外协':''" :visible.sync="addDialog"
+               width="90%" class="dialog-style publicAddDialog"
+               :close-on-click-modal="false" :close-on-press-escape="false">
+      <div class="addInfo">
+        <p class="title1">外协信息</p>
+        <div class="addInfoContainer">
+          <el-form :model="addParams" ref="productForm" size="mini" :inline="true" class="ipt2"
+                   :rules="outsourcedFormRules">
+            <el-form-item label="外协单号" prop="outsourcedNo">
+              <el-input
+                v-model="addParams.outsourcedNo"
+                disabled
+              />
+            </el-form-item>
+            <el-form-item label="外协单位" prop="outsourcingUnit">
+              <el-input
+                v-model="addParams.outsourcingUnit"
+                placeholder="请输入外协单位"
+                clearable/>
+            </el-form-item>
+            <el-form-item label="外协负责人" prop="outsourcingLeader">
+              <el-input
+                v-model="addParams.outsourcingLeader"
+                placeholder="请输入外协负责人"
+                clearable/>
+            </el-form-item>
+            <el-form-item label="外发日期" prop="outgoingDate">
+              <el-date-picker
+                v-model="addParams.outgoingDate"
+                type="datetime"
+                placeholder="选择日期时间"
+                value-format="yyyy-MM-dd HH:mm:ss">
+              </el-date-picker>
+            </el-form-item>
+            <el-form-item label="提货时间" prop="pickUpDate">
+              <el-date-picker
+                v-model="addParams.pickUpDate"
+                type="datetime"
+                placeholder="选择日期时间"
+                value-format="yyyy-MM-dd HH:mm:ss">
+              </el-date-picker>
+            </el-form-item>
+            <el-form-item label="结款方式" prop="paymentMethod">
+              <el-select v-model="addParams.paymentMethod" prop="orderType" placeholder='请选择结款方式'>
+                <el-option
+                  v-for="item in dict.type.order_settlement"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value">
+                </el-option>
+              </el-select>
+            </el-form-item>
+            <el-form-item label="外协联系人" prop="outsourcingContact">
+              <el-input
+                v-model="addParams.outsourcingContact"
+                placeholder="请输入外协联系人"
+                clearable/>
+            </el-form-item>
+            <el-form-item label="联系人电话" prop="contactPhone">
+              <el-input
+                v-model="addParams.contactPhone"
+                placeholder="请输入联系人电话"
+                clearable/>
+            </el-form-item>
+            <el-form-item label="其他费用" prop="otherCost">
+              <el-input
+                v-model="addParams.otherCost"
+                placeholder="请输入其他费用"
+                clearable/>
+            </el-form-item>
+            <el-form-item label="备注" prop="remarks" class="remarks">
+              <el-input
+                type="textarea"
+                v-model="addParams.remarks" size="mini" clearable  placeholder="请输入内容">
+              </el-input>
+            </el-form-item>
+          </el-form>
+        </div>
+      </div>
+      <div class="btnTable">
+        <div class="btn">
+          <el-button
+            type="primary"
+            icon="el-icon-folder-add"
+            size="mini"
+            @click="handleExportProduct">导入订单
+          </el-button>
+        </div>
+        <slot-table class="addTable">
+          <el-table highlight-current-row
+            :data="outsourcedData"
+            border
+            stripe
+            height="100%"
+            style="width: 100%"
+            ref="productTable"
+            slot="table">
+            <el-table-column
+              type="index"
+              label="序号"
+              width="50">
+            </el-table-column>
+            <el-table-column
+              v-for="(item,index) in outsourcedDataColumn"
+              :key="index"
+              :prop="item.prop"
+              :label="item.label"
+              :min-width="item.width"
+              show-overflow-tooltip></el-table-column>
+            <el-table-column label="外协工艺" width="180">
+              <template slot-scope="scope">
+                <el-select ref="fuck" multiple size="mini" v-model='scope.row.remarks'>
+                  <el-option
+                    v-for="orderItem in craftList"
+                    :key="orderItem.craftName"
+                    :label="orderItem.craftName"
+                    :value="orderItem.craftName">
+                  </el-option>
+                </el-select>
+              </template>
+            </el-table-column>
+            <el-table-column label="外协数量（片）" width="180">
+              <template slot-scope="scope">
+                <el-input-number size="mini" v-model="scope.row.noShelfNum" :min="1" :max="scope.row.num - scope.row.outsourcedNum" :precision="0"></el-input-number>
+              </template>
+            </el-table-column>
+            <el-table-column label="外协单价（元/m²）" width="180">
+              <template slot-scope="scope">
+                <el-input-number size="mini" v-model="scope.row.unitPrice" :min="0"></el-input-number>
+              </template>
+            </el-table-column>
+            <el-table-column label="外协加工要求" width="150">
+              <template slot-scope="scope">
+                <el-input size="mini" v-model="scope.row.requirement"></el-input>
+              </template>
+            </el-table-column>
+            <el-table-column
+              label="操作"
+              width="120" class-name="operation">
+              <template slot-scope="scope">
+                <el-button
+                  @click.native.prevent="deleteRow(scope.$index, outsourcedData)"
+                  type="text"
+                  size="mini">
+                  移除
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </slot-table>
+      </div>
+      <span slot="footer" class="dialog-footer">
+        <el-button type="primary" size="mini" @click="saveOutsourced('productForm')">保存</el-button>
+        <el-button size="mini" @click="addDialog=false">取消</el-button>
+      </span>
+    </el-dialog>
+    <!--  审核  -->
+    <el-dialog title="外协审核" :visible.sync="checkDialog" width="500px" class="dialog-style checkDialog"
+               :close-on-click-modal="false" :close-on-press-escape="false" append-to-body>
+      <el-form :model="checkForm" :rules="checkRules" ref="checkForm" label-width="100px">
+        <el-form-item label="审核" prop="reviewCode">
+          <el-radio-group v-model="checkForm.reviewCode">
+            <el-radio label='0'>通过</el-radio>
+            <el-radio label="1">未通过</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="审核人" prop="reviewPerson">
+          <el-input v-model="checkForm.reviewPerson" disabled size="mini" placeholder="请输入审核人"></el-input>
+        </el-form-item>
+        <el-form-item label="不通过原因" prop="reviewReason" v-if="checkForm.reviewCode==1">
+          <el-input v-model="checkForm.reviewReason" type="textarea" size="mini" placeholder="请输入不通过原因"></el-input>
+        </el-form-item>
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+        <el-button type="primary" size="mini" @click="submitCheck('checkForm')">审核</el-button>
+         <el-button size="mini" @click="checkDialog=false">取消</el-button>
+       </span>
+    </el-dialog>
+    <!--  外协单入库  -->
+    <el-dialog title="外协单入库" :visible.sync="entryDialog"
+               width="90%" class="dialog-style publicAddDialog"
+               :close-on-click-modal="false" :close-on-press-escape="false">
+      <div class="addInfo">
+        <p class="title1">入库信息</p>
+        <div class="addInfoContainer">
+          <el-form :model="entryParams" ref="productForm" size="mini" :inline="true" class="ipt2"
+                   :rules="outsourcedFormRules">
+            <el-form-item label="入库单号" prop="warehousedNo">
+              <el-input
+                v-model="entryParams.warehousedNo"
+                placeholder="请输入入库单号"
+                clearable/>
+            </el-form-item>
+            <el-form-item label="入库负责人" prop="warehousedPerson">
+              <el-input
+                v-model="entryParams.warehousedPerson"
+                placeholder="请输入入库负责人"
+                clearable/>
+            </el-form-item>
+            <el-form-item label="入库日期" prop="warehousedDate">
+              <el-date-picker
+                v-model="entryParams.warehousedDate"
+                type="datetime"
+                placeholder="选择日期时间"
+                value-format="yyyy-MM-dd HH:mm:ss">
+              </el-date-picker>
+            </el-form-item>
+            <el-form-item label="备注" prop="remarks" class="remarks">
+              <el-input
+                type="textarea"
+                v-model="entryParams.remarks" size="mini" clearable placeholder="请输入内容">
+              </el-input>
+            </el-form-item>
+          </el-form>
+        </div>
+      </div>
+      <div class="btnTable" style="margin-top: 10px;">
+        <slot-table class="addTable" style="height: calc(100% - 10px)">
+          <el-table highlight-current-row
+            :data="entryData"
+            border
+            stripe
+            height="100%"
+            style="width: 100%"
+            ref="productTable"
+            slot="table">
+            <el-table-column
+              type="index"
+              label="序号"
+              width="50">
+            </el-table-column>
+            <el-table-column
+              v-for="(item,index) in outsourcedDataColumnTwo"
+              :key="index"
+              :prop="item.prop"
+              :label="item.label"
+              :min-width="item.width"
+              show-overflow-tooltip></el-table-column>
+            <el-table-column label="入库数量（片）" width="180">
+              <template slot-scope="scope">
+                <el-input-number size="mini" v-model="scope.row.noShelfNum" :min="1" :max="Number(scope.row.outsourcingNum) - Number(scope.row.warehouseNum)" :precision="0"></el-input-number>
+              </template>
+            </el-table-column>
+            <el-table-column
+              label="操作"
+              width="120" class-name="operation">
+              <template slot-scope="scope">
+                <el-button
+                  @click.native.prevent="deleteRow(scope.$index, entryData)"
+                  type="text"
+                  size="mini">
+                  移除
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </slot-table>
+      </div>
+      <span slot="footer" class="dialog-footer">
+        <el-button type="primary" size="mini" @click="saveEntry('productForm')">保存</el-button>
+        <el-button size="mini" @click="entryDialog=false">取消</el-button>
+      </span>
+    </el-dialog>
+    <!-- 订单导入 -->
+    <order-dialog :exportOrderDialog="exportDialog"
+                  :productList="productList"
+                  :total="productTotal"
+                  @handleOrder="queryExportProduct"
+                  @addOrderList="addProductList"
+                  @backOrderList="backProductList"
+                  ref="orderDialog"></order-dialog>
+    <!--  导入已入库订单  -->
+    <el-dialog title="订单导入" :visible.sync="exportWarehouseOrder" width="65%" class="dialog-style exportProductList"
+               :close-on-click-modal="false" :close-on-press-escape="false" append-to-body>
+      <el-form :model="warehouseOrderParams" size="mini" :inline="true" class="iptAndBtn">
+        <el-form-item label="订单编号">
+          <el-input @keyup.enter.native="queryWarehouseOrder" v-model="warehouseOrderParams.orderNo" clearable/>
+        </el-form-item>
+        <el-form-item label="自定义编号">
+          <el-input @keyup.enter.native="queryWarehouseOrder" v-model="warehouseOrderParams.customNo" clearable/>
+        </el-form-item>
+        <el-form-item label="客户名称">
+          <el-input @keyup.enter.native="queryWarehouseOrder" v-model="warehouseOrderParams.customerName" clearable/>
+        </el-form-item>
+        <el-form-item label="项目名称">
+          <el-input @keyup.enter.native="queryWarehouseOrder" v-model="warehouseOrderParams.entryName" clearable/>
+        </el-form-item>
+        <el-form-item style="width: 30px;min-width: 30px;margin-left: 20px;">
+          <el-button type="primary" icon="el-icon-search" size="mini" @click="queryWarehouseOrder">搜索</el-button>
+        </el-form-item>
+      </el-form>
+      <slot-table class="productList" @handleChange="handleChangeWarehouseOrder"
+                  :pageSize="warehouseOrderParams.pageSize" :pageNum="warehouseOrderParams.pageNum"
+                  :total="warehouseOrderParams.total">
+        <el-table highlight-current-row
+          :data="warehouseOrderList"
+          border
+          stripe
+          height="100%"
+          style="width: 100%"
+          ref="productListTable"
+          @selection-change="selectionWarehouseOrder"
+          @row-click="RowClickWarehouseOrder"
+          slot="table">
+          <el-table-column
+            type="selection"
+            width="55">
+          </el-table-column>
+          <el-table-column
+            type="index"
+            label="序号"
+            width="50">
+          </el-table-column>
+          <el-table-column
+            v-for="(item,index) in outsourcedListColumn"
+            :key="index"
+            :label="item.label"
+            :prop="item.prop"
+            :min-width="item.width"
+            show-overflow-tooltip>
+          </el-table-column>
+        </el-table>
+      </slot-table>
+      <span slot="footer" class="dialog-footer">
+        <el-button type="primary" size="mini" @click="addWarehouseOrder">添加</el-button>
+         <el-button size="mini" @click="backWarehouseOrder">返回</el-button>
+      </span>
+    </el-dialog>
+  </div>
+
+</template>
+
+<script>
+import CountTable from "@/components/public/table/countTable";
+import SlotTable from "@/components/public/table/SlotTable";
+import {Message} from "element-ui";
+import {
+  productionNumber,
+  queryOutsourced,
+  queryOutsourcedProduct,
+  addOutsourced,
+  detailedView,
+  updateQuery,
+  updateOutsourced,
+  outsourcedExamine,
+  delOutsourced
+} from "@/api/salse/outsourced";
+import OrderDialog from "@/views/production/components/orderDialog";
+import {getCraftList} from "@/api/system/craft"
+import {addData} from "@/api/salse/warehousing"
+import {keepThreeNum, keepOneNum} from "@/utils/order/order";
+
+export default {
+  dicts: ['order_settlement'],
+  name: "index",
+  components: {OrderDialog, SlotTable, CountTable},
+  data() {
+    return {
+      receiptDateRange: [],  //交货日期范围
+      queryParams: {
+        auditStatus: "",
+        customNo: "",
+        customerName: "",
+        orderNo: "",
+        outgoingDateEnd: "",
+        outgoingDateStart: "",
+        outsourcedNo: "",
+        outsourcingLeader: "",
+        pageNum: 1,
+        pageSize: 20,
+        paymentStatus: "",
+        warehousingStatus: ""
+      },
+      total: 0,
+      selected: [],
+      //总合计
+      summation: [
+        {label: 'outsourcingNum', title: '外协数量', value: 0, unit: '片'},
+        {label: 'warehousingNum', title: '入库数量', value: 0, unit: '片'},
+        {label: 'outsourcingAmount', title: '外协总金额', value: 0, unit: '元'},
+      ],
+      outsourcedList: [],
+      outsourcedListColumn: [
+        {label: '外协编号', prop: 'outsourcedNo', type: 'ipt', width: '150'},
+        {label: '订单编号', prop: 'orderNo', type: 'ipt', width: '150'},
+        {label: '自定义编号', prop: 'customNo', type: 'ipt', width: '120'},
+        {label: '客户名称', prop: 'customerName', type: 'ipt', width: '120'},
+        {label: '审核状态', prop: 'auditStatus',  type: 'ipt',width: '100'},
+        {label: '付款状态', prop: 'paymentStatus', type: 'ipt',width: '100'},
+        {label: '入库状态', prop: 'warehousingStatus', type: 'ipt', width: '100'},
+        {label: '外协时间', prop: 'outgoingDate', width: '180'},
+        {label: '提货时间', prop: 'pickUpDate', width: '180'},
+        {label: '负责人', prop: 'outsourcingLeader', width: '100'},
+        {label: '联系人', prop: 'outsourcingContact', width: '120'},
+        {label: '联系人电话', prop: 'contactPhone', width: '120'},
+        {label: '外协数量（片）', prop: 'outsourcingNum', width: '110'},
+        {label: '入库数量（片）', prop: 'warehousingNum', width: '120'},
+        {label: '外协总金额（元）', prop: 'outsourcingAmount', width: '120'},
+        {label: '备注', prop: 'remarks'},
+      ],
+      detailDialog: false,  //明细弹窗
+      //明细信息
+      detailsInfo: [
+        {title: '外协编号', label: 'outsourcedNo', value: ''},
+        {title: '入库状态', label: 'warehousingStatus', value: ''},
+        {title: '外协时间', label: 'outgoingDate', value: ''},
+        {title: '负责人', label: 'outsourcingLeader', value: ''},
+        {title: '联系人', label: 'outsourcingContact', value: ''},
+        {title: '联系人电话', label: 'contactPhone', value: ''},
+        {title: '外协总数量（片）', label: 'outsourcingNum', value: ''},
+        {title: '外协总金额（元）', label: 'outsourcingAmount', value: ''},
+        {title: '备注', label: 'remarks', value: ''},
+      ],
+      detailDialogData: [],  //回收站明细数据
+      //订单明细表头
+      detailDialogColumns: [
+        {label: '订单编号', prop: 'orderNo', width: '120'},
+        {label: '自定义编号', prop: 'customNo', width: '120'},
+        {label: '项目名称', prop: 'entryName', width: '200'},
+        {label: '产品名称', prop: 'productName', width: '200'},
+        {label: '宽（mm）', prop: 'wideHead', width: '100'},
+        {label: '高（mm）', prop: 'highHead', width: '100'},
+        {label: '外协数量（片）', prop: 'outsourcingNum', width: '110'},
+        {label: '外协单价（元）', prop: 'outsourcingPrice', width: '110'},
+      ],
+      //工艺流程集合
+      craftList: [],
+      dialogType: 'add',
+      addDialog: false,
+      addParams: {
+        outsourcedNo: '',
+        outgoingDate: '',
+        outsourcingContact: '',
+        outsourcingLeader: '',
+        outsourcingUnit: '',
+        paymentMethod: '',
+        pickUpDate: '',
+        contactPhone: '',
+        otherCost: '',
+        remarks: '',
+        orderProductList: []
+      },
+      outsourcedTypeOptions: [
+        {
+          value: '普通订单',
+          label: '普通订单'
+        }, {
+          value: '加急订单',
+          label: '加急订单'
+        }, {
+          value: '样品订单',
+          label: '样品订单'
+        }, {
+          value: '来料订单',
+          label: '来料订单'
+        }, {
+          value: '外协订单',
+          label: '外协订单'
+        }
+      ],
+      outsourcedData: [],
+      outsourcedDataColumn: [
+        {label: '订单编号', prop: 'orderNo', width: '120'},
+        {label: '自定义编号', prop: 'customNo', width: '120'},
+        {label: '客户名称', prop: 'customerName', width: '120'},
+        {label: '项目名称', prop: 'entryName', width: '200'},
+        {label: '产品名称', prop: 'productName', width: '200'},
+        {label: '宽（mm）', prop: 'wideHead', width: '110'},
+        {label: '高（mm）', prop: 'highHead', width: '110'},
+        {label: '产品数量（片）', prop: 'num', width: '120'},
+        {label: '已外协数量（片）', prop: 'outsourcedNum', width: '120'},
+      ],
+      outsourcedDataColumnTwo: [
+        {label: '订单编号', prop: 'orderNo', width: '120'},
+        {label: '自定义编号', prop: 'customNo', width: '120'},
+        {label: '项目名称', prop: 'entryName', width: '200'},
+        {label: '产品名称', prop: 'productName', width: '150'},
+        {label: '宽（mm）', prop: 'wideHead', width: '110'},
+        {label: '高（mm）', prop: 'highHead', width: '110'},
+        {label: '外协数量（片）', prop: 'outsourcingNum', width: '120'},
+        {label: '已入库数量（片）', prop: 'warehouseNum', width: '120'},
+        {label: '外协单价（元）', prop: 'outsourcingPrice', width: '120'},
+      ],
+      exportDialog: false,
+      exportParams: {
+        id: '',
+        orderNo: '',
+        customNo: '',
+        customName: '',
+        customerName: '',
+        entryName: '',
+        pageNum: 1,
+        pageSize: 20,
+      },
+      productTotal:0,
+      productList: [],
+      checkDialog: false, //审核
+      checkForm: {
+        deliverId: '',
+        reviewCode: '0',  //审核结果  0 通过  1  不通过
+        reviewPerson: '',
+        reviewReason: '',
+      },
+      entryDialog: false,
+      entryParams: {
+        warehousedNo: '',
+        warehousedPerson: '',
+        warehousedDate: '',
+        remarks: '',
+        outsourcedProductsList: []
+      },
+      exportWarehouseOrder: false,  //查询已入库订单
+      warehouseOrderParams: {
+        orderNo: '',
+        customNo: '',
+        customerName: '',
+        entryName: '',
+        pageSize: 20,
+        pageNum: 1,
+        total: 0,
+      },
+      selectedWarehouse: [],
+      warehouseOrderList: [], //已入库订单
+      productListColumn: [
+        {label: '产品名称', prop: 'productName', width: '200'},
+        {label: '位置', prop: 'position', width: '100'},
+        {label: '宽（mm）', prop: 'wideHead', width: '110'},
+        {label: '高（mm）', prop: 'highHead', width: '110'},
+        {label: '订单数量（片）', prop: 'num', width: '120'},
+        {label: '库存数量（片）', prop: 'lengthen', width: '150'},
+        {label: '发货数量（片）', prop: 'unitPrice', width: '120'},
+        {label: '单价（元/m²）', prop: 'productArea', width: '100'},
+      ],
+      selectedProductList: [],
+      entryData: [],
+      outsourcedFormRules: {
+        // outsourcingUnit: [
+        //   {required: true, message: '请输入外协单位', trigger: 'blur'},
+        //   {min: 2, max: 20, message: "长度在 2 到 20 个字符", trigger: "blur"},
+        // ]
+      },
+      checkRules: {
+        reviewCode: [
+          {required: true, message: '请选择审核结果', trigger: 'change'}
+        ],
+        reviewPerson: [
+          {required: true, message: '请输入审核人', trigger: 'change'}
+        ],
+        reviewReason: [
+          {required: true, message: '请输入审核不通过原因', trigger: 'change'}
+        ],
+      },
+    }
+  },
+  created() {
+    this.handleQuery();
+  },
+  mounted() {
+    // this.keyupSubmit();
+    //合计行滚动条
+    var multipleTable = this.$refs.multipleTable.$refs.bodyWrapper;
+    multipleTable.addEventListener('scroll', () => {
+      // 滚动距离
+      const scrollLeft = multipleTable.scrollLeft
+      this.$refs.multipleTable.$refs.headerWrapper.scrollLeft = scrollLeft
+    })
+  },
+  methods: {
+    //键盘按下enter搜索事件
+    keyupSubmit() {
+      document.onkeydown = e => {
+        const _key = window.event.keyCode
+        if (_key === 13) {
+          this.handleQuery();
+          // this.getOrderDetails();
+        }
+      }
+    },
+    handleQuery() {
+      if (this.receiptDateRange) {
+        this.queryParams.outgoingDateStart = this.receiptDateRange[0];
+        this.queryParams.outgoingDateEnd = this.receiptDateRange[1];
+      } else {
+        this.queryParams.outgoingDateStart = '';
+        this.queryParams.outgoingDateEnd = '';
+      }
+      queryOutsourced(this.queryParams).then(res => {
+        this.outsourcedList = res.data;
+        this.total = res.count;
+        if (this.outsourcedList) {
+          this.summation=[
+            {label: 'outsourcingNum', title: '外协数量', value: 0, unit: '片'},
+            {label: 'warehousingNum', title: '入库数量', value: 0, unit: '片'},
+            {label: 'outsourcingAmount', title: '外协总金额', value: 0, unit: '元'},
+          ];
+          this.outsourcedList.forEach(item => {
+            this.summation.forEach(sumItem => {
+              if (item.hasOwnProperty(sumItem.label)) {
+                sumItem.value += item[sumItem.label]
+              }
+              sumItem.value = keepThreeNum(sumItem.value);
+              if (sumItem.label === "outsourcingAmount") {
+                sumItem.value = keepOneNum(sumItem.value);
+              }
+            })
+          })
+        }
+      })
+    },
+    /* 重置 */
+    resetQuery() {
+      this.receiptDateRange = [];
+      this.queryParams = {
+        pageNum: 1,
+        pageSize: 20,
+        customNo: '',
+        customerName: '',
+        entryName: '',
+        id: '',
+        outsourcedNo: '',
+        outsourcedType: '',
+        preparationDateEnd: '',
+        preparationDateStart: '',
+        productionStatus: '',
+      };
+      this.handleQuery();
+      // this.getOrderDetails();
+
+    },
+    /* 查看明细 */
+    handleDetails() {
+      if (this.selected.length <= 0) {
+        Message.warning("请选择要查看的数据");
+        return false
+      }
+      if (this.selected.length > 1) {
+        Message.warning("请选择一条数据进行查看");
+        return false
+      }
+      if (this.selected.length == 1) {
+        this.detailsInfo.forEach(item => {
+          if (this.selected[0].hasOwnProperty(item.label)) {
+            item.value = this.selected[0][item.label]
+          }
+        })
+        detailedView({id: this.selected[0].id, type: 0}).then(res => {
+          this.detailDialogData = res.data;
+        })
+        this.detailDialog = true;
+      }
+    },
+    /* 新增外协 */
+    handleAdd() {
+      this.dialogType = 'add';
+      this.addDialog = true;
+      this.addParams = {
+        outsourcedNo: '',
+        outgoingDate: '',
+        outsourcingContact: '',
+        outsourcingLeader: '',
+        outsourcingUnit: '',
+        paymentMethod: '',
+        pickUpDate: '',
+        contactPhone: '',
+        otherCost: '',
+        remarks: '',
+        orderProductList: []
+      };
+      productionNumber().then(res => {
+        this.addParams.outsourcedNo = res.msg;
+      })
+      getCraftList({pageNum: 1, pageSize: 10000}).then(res => {
+        this.craftList = res.data;
+      })
+      this.outsourcedData = [];
+    },
+    /* 编辑外协 */
+    handleUpdate() {
+      if (!this.selected || this.selected === [] || this.selected.length === 0) {
+        Message.warning("请选择要修改的数据");
+      } else if (this.selected.length !== 1) {
+        Message.warning("请选择一条数据进行修改");
+      } else {
+        if (this.selected[0].auditStatus !== '未审核') {
+          this.$message.warning("只能编辑未审核的外协单！")
+          return
+        }
+        this.dialogType = 'edit';
+        this.addDialog = true;
+        this.addParams = JSON.parse(JSON.stringify(this.selected[0]));
+        this.outsourcedData = []
+        updateQuery({id: this.selected[0].id}).then(res => {
+          res.data.forEach(item => {
+            item.remarks = item.remarks.split(",");
+            this.outsourcedData.push(item)
+          })
+        })
+        getCraftList({pageNum: 1, pageSize: 10000}).then(res => {
+          this.craftList = res.data;
+        })
+      }
+    },
+    /*删除外协*/
+    handleDelete() {
+      if (!this.selected || this.selected === [] || this.selected.length === 0) {
+        this.$message({
+          message: '请至少选择一条数据',
+          type: 'warning'
+        });
+      } else {
+        let ids = [];
+        for (let i = 0; i < this.selected.length; i++) {
+          ids.push(this.selected[i].id)
+          if (this.selected[i].auditStatus !== '未审核') {
+            this.$message.warning("只能删除未审核的外协单！")
+            return
+          }
+        }
+        this.$confirm('此操作将删除选中数据，是否继续?', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning',
+        }).then(() => {
+          delOutsourced({ids: ids.toString()}).then(res => {
+            if (res.code === 200) {
+              this.$message({
+                type: 'success',
+                message: res.msg
+              });
+              this.handleQuery();
+            } else {
+              this.$message({
+                type: 'error',
+                message: res.msg
+              });
+            }
+          })
+          this.selected = [];
+        }).catch(() => {
+          this.$message({
+            type: 'info',
+            message: '已取消删除'
+          });
+        });
+      }
+    },
+    /* 审核 */
+    handleCheck() {
+      if (this.selected.length <= 0) {
+        Message.warning("请选择要审核的数据");
+        return false
+      }
+      for (let i = 0; i < this.selected.length; i++) {
+        if (this.selected[i].auditStatus !== '未审核') {
+          this.$message.warning("存在已审核外协单，请重新选择！")
+          return
+        }
+      }
+      if (this.selected.length === 1) {
+        // if (this.selected[0].deliverStatus != 2) {
+        //   Message.warning("发货单已审核，无法再次审核");
+        // } else {
+        this.checkDialog = true;
+        this.checkForm.reviewCode = '0';
+        /*查询登录信息*/
+        this.checkForm.reviewPerson = localStorage.getItem("nickName");
+      }
+    },
+    /* 保存审核 */
+    submitCheck(formName) {
+      this.$refs[formName].validate((valid) => {
+        if (valid) {
+          let ids = []
+          this.selected.forEach(item => {
+            ids.push(item.id)
+          })
+          this.checkDialog = false;
+          outsourcedExamine({
+            ids: ids.toString(),
+            type: this.checkForm.reviewCode,
+            people: this.checkForm.reviewPerson,
+            text: this.checkForm.reviewReason
+          }).then(res => {
+            if (res.code === 200) {
+              Message.success(res.msg);
+            } else {
+              Message.warning(res.msg);
+            }
+            this.handleQuery();
+          }).catch(err => {
+            Message.warning(err.msg);
+          })
+        } else {
+          return false;
+        }
+      })
+    },
+    /* 消审 */
+    handleRemoveCheck() {
+      if (this.selected.length <= 0) {
+        Message.warning("请选择要消审的数据");
+        return false
+      }
+      for (let i = 0; i < this.selected.length; i++) {
+        if (this.selected[i].auditStatus === '未审核') {
+          this.$message.warning("存在未审核的外协单，请重新选择！")
+          return
+        }
+      }
+      this.$confirm('此操作将消除当前审核，是否继续?', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }).then(() => {
+        let ids = [];
+        this.selected.forEach(item => {
+          ids.push(item.id)
+        })
+        outsourcedExamine({
+          ids: ids.toString(),
+          type: 3
+        }).then(res => {
+          if (res.code === 200) {
+            Message.success(res.msg);
+          } else {
+            Message.warning(res.msg);
+          }
+          this.handleQuery();
+        }).catch(err => {
+          Message.warning(err.msg);
+        })
+      }).catch(() => {
+        this.$message({
+          type: 'info',
+          message: '已取消外协单消审'
+        });
+      });
+    },
+    /* 外协单入库 */
+    handleEntry() {
+      if (!this.selected || this.selected === [] || this.selected.length !== 1) {
+        Message.warning("请选择一条数据!");
+      } else {
+        if (this.selected[0].auditStatus == '未审核') {
+          this.$message.warning("未审核订单无法入库!")
+          return
+        }
+        if (this.selected[0].warehousingStatus == '已入库') {
+          this.$message.warning("请选择未入库外协单！")
+          return
+        }
+        this.entryDialog = true;
+        detailedView({id: this.selected[0].id, type: 1}).then(res => {
+          this.entryData = res.data;
+        })
+      }
+    },
+    /* 入库记录 */
+    handleRecord() {
+      this.$router.push('/sales/outsourced/entryRecordes');
+    },
+    /* 导入产品 */
+    handleExportProduct() {
+      this.exportDialog = true;
+      this.queryExportProduct();
+    },
+    /* 移除产品 */
+    deleteRow(index, rows) {
+      alert(index)
+      rows.splice(index, 1);
+    },
+    /* 查询导入订单 */
+    queryExportProduct() {
+      if (this.$refs.orderDialog) {
+        let params = this.$refs.orderDialog.exportOrderParams
+        queryOutsourcedProduct(params).then(res => {
+          this.productList = res.data;
+          this.productTotal = res.count;
+        })
+      }
+    },
+    /* 添加导入产品信息 */
+    addProductList(val, tableData) {
+      if (val.length <= 0) {
+        Message.warning("请选择要添加的数据");
+      } else {
+        for (let i = 0; i < val.length; i++) {
+          var index = tableData.indexOf(val[i])
+          for (let j = 0; j < this.outsourcedData.length; j++) {
+            if (val[i].productId == this.outsourcedData[j].productId) {
+              Message.warning("序号为" + (index + 1) + "的数据已经添加,不可重复添加！");
+              return;
+            }
+          }
+        }
+        this.outsourcedData.push(...val);
+        Message.success("导入产品信息成功");
+        this.$refs.orderDialog.$refs.productListTable.clearSelection();
+      }
+    },
+    /* 取消导入产品信息 */
+    backProductList() {
+      this.exportDialog = false;
+      this.$refs.orderDialog.$refs.productListTable.clearSelection();
+    },
+    /* 保存外协单 */
+    saveOutsourced(formName) {
+      this.$refs[formName].validate((valid) => {
+        if (valid) {
+          if (this.outsourcedData.length <= 0) {
+            Message.warning("请导入外协信息进行外协");
+          } else {
+            this.outsourcedData.forEach(item => {
+              item.remarks = item.remarks.toString();
+            })
+            this.addParams.orderProductList = this.outsourcedData;
+            if (this.dialogType === 'add') {
+              addOutsourced(this.addParams).then(res => {
+                if (res.code === 200) {
+                  this.$message({
+                    type: 'success',
+                    message: res.msg
+                  });
+                  this.handleQuery();
+                } else {
+                  this.$message({
+                    type: 'error',
+                    message: res.msg
+                  });
+                }
+              })
+              this.addDialog = false;
+            }
+            if (this.dialogType === 'edit') {
+              updateOutsourced(this.addParams).then(res => {
+                if (res.code === 200) {
+                  this.$message({
+                    type: 'success',
+                    message: res.msg
+                  });
+                  this.handleQuery();
+                } else {
+                  this.$message({
+                    type: 'error',
+                    message: res.msg
+                  });
+                }
+              })
+              this.addDialog = false;
+            }
+          }
+        } else {
+          return false;
+        }
+      });
+    },
+    /* 出库   导入订单 */
+    handleExportEntry() {
+      this.exportWarehouseOrder = true;
+    },
+
+    /* 已入库分页 */
+    handleChangeWarehouseOrder(size, num) {
+      this.warehouseOrderParams.pageSize = size;
+      this.warehouseOrderParams.pageNum = num;
+      this.queryWarehouseOrder();
+    },
+    queryWarehouseOrder() {
+
+    },
+    /* 选中已入库数据 */
+    selectionWarehouseOrder(val) {
+      this.selectedWarehouse = val;
+    },
+    RowClickWarehouseOrder(row, column, event) {
+      this.$refs.productListTable.toggleRowSelection(row, column)
+    },
+    /* 添加 */
+    addWarehouseOrder() {
+      if (this.selectedWarehouse.length <= 0) {
+        Message.warning("请选择要添加的数据");
+      } else {
+        this.entryProduct.push(...this.selectedWarehouse);
+        Message.success("导入产品信息成功");
+        this.exportWarehouseOrder = false;
+        this.$refs.productListTable.clearSelection();
+      }
+    },
+    /*取消*/
+    backWarehouseOrder() {
+      this.exportWarehouseOrder = false;
+      this.$refs.productListTable.clearSelection();
+    },
+    /* 保存入库 */
+    saveEntry(formName) {
+      this.$refs[formName].validate((valid) => {
+        if (valid) {
+          if (this.entryData.length <= 0) {
+            Message.warning("请导入外协信息进行外协");
+          } else {
+            this.entryParams.outsourcedProductsList = this.entryData;
+            addData(this.entryParams).then(res => {
+              if (res.code === 200) {
+                this.$message.success(res.msg)
+                this.entryParams = {}
+                this.entryData = []
+              }else {
+                this.$message.error(res.msg)
+              }
+            })
+            this.entryDialog = false;
+          }
+        } else {
+          return false;
+        }
+        this.handleQuery();
+      });
+    },
+    /* 打印 */
+    toPrint(printId) {
+      /**
+       * data为模板所需要参数
+       * 例如需要根据id查询模板数据
+       */
+      let data = {id: this.selected[0].id}
+      const {href} = this.$router.resolve({
+        path: '/print',
+        query: {printId, ...data}
+      })
+      window.open(href, '_blank')
+    },
+    //导出条目数据
+    exportOrder(param) {
+      let ids = [];
+      if (this.selected.length > 0) {
+        this.selected.forEach(item => {
+          ids.push(item.id)
+        })
+      }
+      if (param === 0) {//导出订单
+        this.download('sales/outsourced/exportOutsourced', {
+          ids: ids.toString()
+        }, `外协记录.xlsx`)
+      } else if (param === 1) {//导出产品
+        this.download('sales/outsourced/exportOutsourced', {
+          ids: ids.toString()
+        }, `外协记录明细.xlsx`)
+      }
+    },
+    /* 分页器 */
+    handleChange(pageSize, pageNum) {
+      console.log(pageSize, pageNum)
+      // this.pageSize = pageSize;
+      // this.pageNum = pageNum;
+      this.queryParams.pageSize = pageSize;
+      this.queryParams.pageNum = pageNum;
+      this.handleQuery();
+    },
+    /* 选中数据 */
+    handleSelectionChange(val) {
+      // console.log('this.selected',val.slice(-1))
+      this.selected = val;
+    },
+    /* 翻页后序号连贯 */
+    getIndex($index) {
+      //  表格序号
+      return (this.queryParams.pageNum - 1) * this.queryParams.pageSize + $index + 1;
+    },
+    /* 行点击事件 */
+    handleRowClick(row, column, event) {
+      this.$refs.multipleTable.toggleRowSelection(row, column)
+    },
+  }
+}
+</script>
+
+<style lang="scss" scoped>
+.rightTable {
+  height: calc(100% - 105px);
+}
+.exportProductList {
+  ::v-deep .el-dialog {
+    height: calc(60vh);
+
+    .el-dialog__body {
+      height: calc(100% - 90px);
+      padding-bottom: 0;
+
+      .productList {
+        height: calc(100% - 100px);
+        margin: 10px 0;
+      }
+
+      .iptAndBtn {
+        height: 80px;
+        flex-wrap: wrap;
+        overflow: auto;
+
+        .el-form-item {
+          min-width: 300px;
+
+          .el-form-item__label {
+            width: 100px;
+          }
+        }
+      }
+    }
+  }
+}
+
+</style>

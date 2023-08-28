@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.erp.floor.mapper.sales.ShelfDivisionBusinessMapper">
+
+    <resultMap id="result" type="ShelfDivisionBusiness">
+        <id property="id" column="id"/>
+        <result property="productId" column="product_id"/>
+        <result property="semiProductId" column="semi_product_id"/>
+        <result property="productProcessId" column="product_process_id"/>
+        <result property="productName" column="product_name"/>
+        <result property="position" column="position"/>
+        <result property="itemSurface" column="item_surface"/>
+        <result property="flowCardId" column="flow_card_id"/>
+        <result property="flowCardNo" column="flow_card_no"/>
+        <result property="orderNo" column="order_no"/>
+        <result property="customNo" column="custom_no"/>
+        <result property="entryName" column="entry_name"/>
+        <result property="customerName" column="customer_name"/>
+        <result property="itemName" column="item_name"/>
+        <result property="itemType" column="item_type"/>
+        <result property="itemThick" column="item_thick"/>
+        <result property="processId" column="process_id"/>
+        <result property="processContent" column="process_content"/>
+        <result property="itemW" column="item_w"/>
+        <result property="itemH" column="item_h"/>
+        <result property="itemNum" column="item_num"/>
+        <result property="totalArea" column="total_area"/>
+        <result property="totalWeight" column="total_weight"/>
+        <result property="requirement" column="requirement"/>
+        <result property="remarks" column="remarks"/>
+        <result property="remarksOne" column="remarks_one"/>
+        <result property="remarksTwo" column="remarks_two"/>
+    </resultMap>
+
+    <select id="selectByIds" parameterType="String" resultMap="result">
+        select  s.*, p.remarks, p.remarks_one, p.remarks_two
+        from shelf_division_business s
+        left join order_product p on s.product_id = p.id
+        <where>
+            <if test="array != null">
+                AND s.flow_card_id in
+                <foreach collection="array" item="ids" open="(" separator="," close=")">
+                    #{ids}
+                </foreach>
+            </if>
+        </where>
+        order by s.flow_card_no ASC
+    </select>
+
+</mapper>

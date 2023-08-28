@@ -1,0 +1,51 @@
+package com.erp.produce.controller;
+
+import com.erp.common.core.domain.CommonResult;
+import com.erp.produce.service.PatchService;
+import com.github.xiaoymin.knife4j.annotations.ApiOperationSupport;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletResponse;
+import java.util.Map;
+
+/**
+ * @author hanfei
+ * @version 1.0
+ * @Description
+ * @date 2022/9/22 15:23
+ */
+
+@RestController
+@Api(tags = "生产管理-补片统计")
+@RequestMapping("/produce/patch/count")
+public class PatchCountController {
+
+    @Resource
+    private PatchService service;
+
+
+    @GetMapping("/list")
+    @ApiOperationSupport(ignoreParameters = {"id","created_at","updated_at"})
+    @ApiOperation("获取补片统计列表")
+    public CommonResult list(@RequestParam Map<String,String> data){
+        return service.getCountList(data);
+    }
+
+    @PreAuthorize("@ss.hasPermi('system:patch_count:info')")
+    @GetMapping("/info/{id}")
+    @ApiOperationSupport(ignoreParameters = {"id","created_at","updated_at"})
+    @ApiOperation("获取补片明细")
+    public CommonResult info(@PathVariable("id") String id){
+        return service.getCountInfo(id);
+    }
+    @ApiOperation(value = "导出补片统计")
+    @PostMapping("/export")
+    @PreAuthorize("@ss.hasPermi('system:patch_count:export')")
+    public void export(HttpServletResponse response, String ids){
+        service.exportCount(response, ids);
+    }
+}

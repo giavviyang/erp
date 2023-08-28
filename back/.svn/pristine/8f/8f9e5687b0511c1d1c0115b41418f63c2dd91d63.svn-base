@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="c3da3c7d-93cf-4261-9ee1-83c6c6c19d65" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/src/assets/logo/logo1.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/assets/logo/logo2.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/assets/logo/logo3.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/public/favicon.ico" beforeDir="false" afterPath="$PROJECT_DIR$/public/favicon1.ico" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/layout/components/Sidebar/Logo.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/layout/components/Sidebar/Logo.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/accessories/accessoriesDamage/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/accessories/accessoriesDamage/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/accessories/accessoriesFilm/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/accessories/accessoriesFilm/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/accessories/accessoriesPurchase/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/accessories/accessoriesPurchase/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/accessories/accessoriesWarehouse/checkNumRecords.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/accessories/accessoriesWarehouse/checkNumRecords.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/accessories/accessoriesWarehouse/entryRecords.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/accessories/accessoriesWarehouse/entryRecords.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/accessories/accessoriesWarehouse/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/accessories/accessoriesWarehouse/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/accessories/accessoriesWarehouse/outboundRecords.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/accessories/accessoriesWarehouse/outboundRecords.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/accessories/components/accessoriesDialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/accessories/components/accessoriesDialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/accessories/components/purchaseDialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/accessories/components/purchaseDialog.vue" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="JavaScript File" />
+        <option value="Vue Single File Component" />
+      </list>
+    </option>
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectId" id="2CCMr0lJxpxHABiufoldNj2u6kX" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true">
+    <ConfirmationsSetting value="1" id="Add" />
+  </component>
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/public" />
+    <property name="node.js.detected.package.eslint" value="true" />
+    <property name="node.js.detected.package.tslint" value="true" />
+    <property name="node.js.path.for.package.eslint" value="project" />
+    <property name="node.js.path.for.package.tslint" value="project" />
+    <property name="node.js.selected.package.eslint" value="(autodetect)" />
+    <property name="node.js.selected.package.tslint" value="(autodetect)" />
+    <property name="nodejs_package_manager_path" value="npm" />
+    <property name="settings.editor.selected.configurable" value="preferences.pluginManager" />
+    <property name="ts.external.directory.path" value="D:\Webstorm安装包\WebStorm 2020.3.3\plugins\JavaScriptLanguage\jsLanguageServicesImpl\external" />
+    <property name="vue.rearranger.settings.migration" value="true" />
+  </component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="D:\北大软件工程\LY_project\LY-ERP\erp-ui\public" />
+      <recent name="D:\北大软件工程\LY_project\LY-ERP\erp-ui\src\assets\logo" />
+      <recent name="D:\IdeaProject\erp_project\erp-ui\src\views\system\template" />
+      <recent name="D:\IdeaProject\erp_project\erp-ui\src\assets\icons\svg" />
+      <recent name="D:\北大软件工程\LY_project\erp_project\erp-ui\src\assets\icons\svg" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="D:\IdeaProject\erp_project\erp-ui\src\views\print" />
+    </key>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="SvnConfiguration" cleanupOnStartRun="true">
+    <configuration>C:\Users\wqm\AppData\Roaming\Subversion</configuration>
+    <supportedVersion>125</supportedVersion>
+  </component>
+  <component name="SvnFileUrlMappingImpl">
+    <option name="myMappingRoots">
+      <list>
+        <SvnCopyRootSimple>
+          <option name="myVcsRoot" value="D:\北大软件工程\LY_project\LY-ERP\erp-ui" />
+          <option name="myCopyRoot" value="D:\北大软件工程\LY_project\LY-ERP\erp-ui" />
+        </SvnCopyRootSimple>
+      </list>
+    </option>
+    <option name="myMoreRealMappingRoots">
+      <list>
+        <SvnCopyRootSimple>
+          <option name="myVcsRoot" value="D:\北大软件工程\LY_project\LY-ERP\erp-ui" />
+          <option name="myCopyRoot" value="D:\北大软件工程\LY_project\LY-ERP\erp-ui" />
+        </SvnCopyRootSimple>
+      </list>
+    </option>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="c3da3c7d-93cf-4261-9ee1-83c6c6c19d65" name="Default Changelist" comment="" />
+      <created>1658302307574</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1658302307574</updated>
+      <workItem from="1658302312523" duration="498000" />
+      <workItem from="1658303506386" duration="2336000" />
+      <workItem from="1658367375432" duration="847000" />
+      <workItem from="1659343141318" duration="6354000" />
+      <workItem from="1659404785422" duration="16907000" />
+      <workItem from="1659491407700" duration="80000" />
+      <workItem from="1659491732912" duration="32000" />
+      <workItem from="1659492172938" duration="463000" />
+      <workItem from="1659492701915" duration="30000" />
+      <workItem from="1659492953348" duration="207000" />
+      <workItem from="1659493170147" duration="13396000" />
+      <workItem from="1659577024888" duration="14836000" />
+      <workItem from="1659663585862" duration="10472000" />
+      <workItem from="1660960190887" duration="34969000" />
+      <workItem from="1666689703115" duration="6087000" />
+      <workItem from="1666748253281" duration="21862000" />
+      <workItem from="1666834933755" duration="9893000" />
+    </task>
+    <task id="LOCAL-00001">
+      <created>1666763332996</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1666763332996</updated>
+    </task>
+    <task id="LOCAL-00002">
+      <created>1666842266674</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1666842266674</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <option name="LAST_COMMIT_MESSAGE" value="" />
+  </component>
+</project>

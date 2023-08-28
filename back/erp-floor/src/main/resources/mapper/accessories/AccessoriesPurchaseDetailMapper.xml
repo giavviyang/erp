@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.erp.floor.mapper.accessories.AccessoriesPurchaseDetailMapper">
+
+    <resultMap type="AccessoriesPurchaseDetail" id="DetailResult">
+        <id property="id" column="id"/>
+        <result property="purchaseId" column="purchase_id"/>
+        <result property="purchaseNo" column="purchase_no"/>
+        <result property="accessoriesId" column="accessories_id"/>
+        <result property="accessoriesNo" column="accessories_no"/>
+        <result property="accessoriesName" column="accessories_name"/>
+        <result property="purchaseAmount" column="purchase_amount"/>
+        <result property="purchaseNum" column="purchase_num"/>
+        <result property="purchasePrice" column="purchase_price"/>
+        <result property="purchaseCompany" column="purchase_company"/>
+        <result property="typeName" column="type_name"/>
+        <result property="typeId" column="type_id"/>
+        <result property="accessoriesSpecifications" column="accessories_specifications"/>
+        <result property="accessoriesCompany" column="accessories_company"/>
+        <result property="accessoriesMill" column="accessories_mill"/>
+        <result property="referencePrice" column="reference_price"/>
+        <result property="alarmInventory" column="alarm_inventory"/>
+        <result property="remarks" column="remarks"/>
+    </resultMap>
+
+    <select id="viewDetail" parameterType="String" resultMap="DetailResult">
+        select p.*,
+        a.type_name ,
+        a.type_id ,
+        a.accessories_specifications ,
+        a.accessories_company ,
+        a.accessories_mill ,
+        a.reference_price ,
+        a.alarm_inventory ,
+        a.remarks
+        from accessories_purchase_detail p
+        left join accessories a on p.accessories_id = a.id
+        <where>
+            <if test="array != null">
+                AND p.purchase_id in
+                <foreach collection="array" item="ids" open="(" separator="," close=")">
+                    #{ids}
+                </foreach>
+            </if>
+        </where>
+
+    </select>
+
+</mapper>

@@ -1,0 +1,723 @@
+<template>
+  <div class="app-container">
+    <main-flexible-tree-right-click :data="treeData"
+                                    :defaultProps="TreeDefaultProps"
+                                    @handleNodeClick="handleNodeClick"
+                                    @rightClick="rightClick"  >
+      <VueContextMenu
+        :target="contextMenuTarget"
+        :show="contextMenuVisible"
+        class="right-menus"
+        @update:show="(show) => contextMenuVisible = show" slot="RightClick">
+        <a @click="addType" v-hasPermi="['originalFilm:definition:addType']">新增类型</a>
+        <a @click="editType" v-hasPermi="['originalFilm:definition:editType']">编辑类型</a>
+        <a @click="delType" v-hasPermi="['originalFilm:definition:delType']">删除类型</a>
+      </VueContextMenu>
+      <div slot="mainRight" class="app-container">
+        <el-form :model="queryParams" ref="queryForm" size="mini" :inline="true" class="iptAndBtn">
+          <el-form-item label="原片名称" prop="originalName">
+            <el-input
+              v-model="queryParams.originalName"
+              placeholder="请输入原片名称"
+              @keyup.enter.native="handleQuery"
+              clearable/>
+          </el-form-item>
+          <el-form-item label="原片编号" prop="originalNo">
+            <el-input
+              v-model="queryParams.originalNo"
+              placeholder="请输入原片编号"
+              @keyup.enter.native="handleQuery"
+              clearable/>
+          </el-form-item>
+          <el-form-item label="原片厚度" prop="originalThick">
+            <el-input
+              v-model="queryParams.originalThick"
+              placeholder="请输入原片厚度"
+              @keyup.enter.native="handleQuery"
+              clearable/>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" icon="el-icon-search" @click="handleQuery">搜索</el-button>
+          </el-form-item>
+        </el-form>
+        <div class="btn">
+          <el-button
+            type="primary"
+            icon="el-icon-plus"
+            size="mini"
+            v-hasPermi="['originalFilm:definition:addOriginalFilm']"
+            @click="handleAdd"
+          >新增原片
+          </el-button>
+          <el-button
+            type="primary"
+            icon="el-icon-edit"
+            size="mini"
+            v-hasPermi="['originalFilm:definition:updOriginalFilm']"
+            @click="handleUpdate"
+          >编辑原片
+          </el-button>
+          <el-button
+            type="primary"
+            icon="el-icon-delete"
+            size="mini"
+            v-hasPermi="['originalFilm:definition:delOriginalFilm']"
+            @click="handleDelete"
+          >删除原片
+          </el-button>
+          <el-button
+            type="primary"
+            size="mini"
+            v-hasPermi="['originalFilm:definition:exportOriginalFilm']"
+            @click="handleExport"
+          ><i class="iconfont icon-daochuwenjian"></i>导出原片
+          </el-button>
+        </div>
+        <slot-table class="rightTable" @handleChange="handleChange" :pageSize="queryParams.pageSize"
+                    :pageNum="queryParams.pageNum" :total="total">
+          <el-table highlight-current-row
+            :data="tableDate"
+            stripe
+            border
+            height="100%"
+            ref="templateTableRef"
+            @selection-change="handleSelectionChange"
+            @row-click="handleRowClick" slot="table">
+            <el-table-column
+              type="selection"
+              width="55">
+            </el-table-column>
+            <el-table-column
+              type="index"
+              :index="getIndex"
+              label="序号"
+              width="50">
+            </el-table-column>
+            <el-table-column
+              show-overflow-tooltip
+              v-for="item in tableColumn"
+              :key="item.id"
+              :prop="item.prop"
+              :label="item.label"
+              :min-width="item.width">
+            </el-table-column>
+          </el-table>
+        </slot-table>
+      </div>
+    </main-flexible-tree-right-click>
+    <el-dialog :title="typeDialogType=='add'?'新增原片类型':typeDialogType=='edit'?'编辑原片类型':''"
+               :visible.sync="typeDialog" width="500px" class="dialog-style typeDialog"
+               :close-on-click-modal="false"
+               :close-on-press-escape="false" :destroy-on-close="true">
+      <el-form :model="typeForm" :rules="typeFormRules" ref="typeFormRef" label-width="100px" size="mini">
+        <el-form-item label="上级类型" prop="tidName">
+          <!--          <el-input style="width: 350px" v-model="typeForm.tidName" disabled></el-input>-->
+          <span v-if="typeDialogType == 'add'">{{
+              currentRightNodeInfo ? currentRightNodeInfo.originalTypeName : '无'
+            }}</span>
+          <span v-else>{{ typeForm.tidName }}</span>
+        </el-form-item>
+        <el-form-item label="类型名称" prop="originalTypeName">
+          <el-input style="width: 350px" v-model="typeForm.originalTypeName" placeholder="请输入类型名称"></el-input>
+        </el-form-item>
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+        <el-button type="primary" size="mini" @click="typeSubmit('typeFormRef')">保存</el-button>
+        <el-button size="mini" @click="typeDialog=false">取消</el-button>
+      </span>
+    </el-dialog>
+    <el-dialog :title="dialogType=='add'?'新增原片':dialogType=='edit'?'编辑原片':''" :visible.sync="dialog"
+               width="50%" class="dialog-style dialogType"
+               :close-on-click-modal="false"
+               :close-on-press-escape="false" :destroy-on-close="true">
+      <el-form :model="originalForm" ref="originalFormRef" class="ipt2">
+        <el-form-item label="原片名称" prop="originalName">
+          <el-input v-model="originalForm.originalName" placeholder="请输入原片名称" size="mini" clearable></el-input>
+        </el-form-item>
+        <el-form-item label="原片编号" prop="originalNo">
+          <el-input v-model="originalForm.originalNo" placeholder="请输入原片编号" size="mini" clearable></el-input>
+        </el-form-item>
+        <el-form-item label="原片类型" prop="originalTypeId">
+          <el-cascader
+            placeholder="请选择原片类型"
+            v-model="originalForm.originalTypeId"
+            :props="{value:'id',label:'originalTypeName'}"
+            :show-all-levels="false"
+            :options="treeData"
+            clearable
+            size="mini">
+          </el-cascader>
+        </el-form-item>
+        <el-form-item label="颜色 / 膜系" prop="originalColor">
+          <el-input v-model="originalForm.originalColor" placeholder="请输入颜色 / 膜系" size="mini" clearable></el-input>
+        </el-form-item>
+        <el-form-item label="厂家名称" prop="millName">
+          <el-input v-model="originalForm.millName" placeholder="请选择厂家名称" size="mini"  @focus="handleBlur"
+                    ref="millNameInput" clearable></el-input>
+        </el-form-item>
+        <el-form-item label="原片等级" prop="originalGrade">
+          <el-input v-model="originalForm.originalGrade" placeholder="请输入原片等级" size="mini" clearable></el-input>
+        </el-form-item>
+        <el-form-item label="厚度（mm）" prop="originalThick">
+          <el-input v-model="originalForm.originalThick" placeholder="请输入厚度（mm）" size="mini" clearable></el-input>
+        </el-form-item>
+        <el-form-item label="长度（mm）" prop="originalLong">
+          <el-input v-model="originalForm.originalLong" placeholder="请输入长度（mm）" size="mini" clearable></el-input>
+        </el-form-item>
+        <el-form-item label="宽度（mm）" prop="originalWidth">
+          <el-input v-model="originalForm.originalWidth" placeholder="请输入宽度（mm）" size="mini" clearable></el-input>
+        </el-form-item>
+        <el-form-item label="参考采购价（元）" prop="referencePrice">
+          <el-input v-model="originalForm.referencePrice" placeholder="请输入参考采购价（元）" size="mini"
+                    clearable></el-input>
+        </el-form-item>
+        <el-form-item label="库存预警（片）" prop="earlyWarning">
+          <el-input v-model="originalForm.earlyWarning" placeholder="请输入库存预警（片）" size="mini"
+                    clearable></el-input>
+        </el-form-item>
+        <el-form-item label="备注" prop="remarks" class="remarks">
+          <el-input
+            type="textarea"
+            v-model="originalForm.remarks" size="mini" clearable placeholder="请输入内容">
+          </el-input>
+        </el-form-item>
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+        <el-button type="primary" size="mini" @click="saveOriginal('originalFormRef')">保存</el-button>
+        <el-button size="mini" @click="dialog=false">取消</el-button>
+      </span>
+    </el-dialog>
+    <mill-dialog :selectMillDialog="selectMillDialog"
+                 @saveSelectMill="saveSelectMill"
+                 @cancelSelectMill="cancelSelectMill"
+                 ref="millDialog"></mill-dialog>
+  </div>
+</template>
+
+<script>
+
+import {component as VueContextMenu} from '@xunlei/vue-context-menu';
+import MainFlexibleTreeRightClick from "@/components/public/MainBody/MainFlexibleTreeRightClick";
+import SlotTable from "@/components/public/table/SlotTable";
+import {
+  addOriginalType,
+  queryTree,
+  updOriginalType,
+  delOriginalType,
+  addOriginalFilm, queryOriginalFilm, updOriginalFilm, delOriginalFilm
+} from "@/api/original/originalFilm";
+import {groupBy} from "@/utils/groupBy";
+import {Message} from "element-ui";
+import MillDialog from "@/views/original/components/millDialog";
+
+
+export default {
+  name: "index",
+  components: {MillDialog, SlotTable, MainFlexibleTreeRightClick, VueContextMenu},
+  data() {
+    return {
+      treeData: [], //左侧tree树
+      TreeDefaultProps: {
+        children: 'children',
+        label: 'originalTypeName'
+      },
+      contextMenuTarget: '',
+      contextMenuVisible: false,
+      currentRightNodeInfo: {},
+      topNodeInfo: {},
+      typeForm: {
+        originalTypeName: "",
+        // tid: this.currentRightNodeInfo.id,
+      },
+      queryParams: {
+        earlyWarning: '',
+        id: "",
+        millName: "",
+        operationNum: '',
+        originalColor: "",
+        originalGrade: "",
+        originalLong: '',
+        originalName: "",
+        originalNo: "",
+        originalThick: '',
+        originalTypeId: "",
+        originalTypeName: "",
+        originalWidth: '',
+        pageNum: 1,
+        pageSize: 20,
+        referencePrice: '',
+        remarks: "",
+        stock: '',
+        totalAmount: '',
+        unitPrice: '',
+      },
+      total: 1,
+      tableDate: [],
+      selected: [],
+      tableColumn: [
+        {label: '原片名称', prop: 'originalName', width: '120'},
+        {label: '长度（mm）', prop: 'originalLong', width: '100'},
+        {label: '宽度（mm）', prop: 'originalWidth', width: '100'},
+        {label: '原片编号', prop: 'originalNo', width: '100'},
+        {label: '颜色 / 膜系', prop: 'originalColor', width: '100'},
+        {label: '厚度（mm）', prop: 'originalThick', width: '100'},
+        {label: '厂家名称', prop: 'millName', width: '150'},
+
+        {label: '原片类型', prop: 'originalTypeName', width: '100'},
+        {label: '等级', prop: 'originalGrade', width: '100'},
+        {label: '参考采购单价（元/m²）', prop: 'referencePrice', width: '150'},
+        {label: '库存预警（片）', prop: 'earlyWarning', width: '120'},
+        {label: '录入日期', prop: 'createdAt', width: '180'},
+        {label: '备注', prop: 'remarks', width: '100'},
+      ],
+      typeDialogType: 'add',  //类型弹窗
+      typeDialog: false,
+      dialogType: 'add', //新增、编辑原片
+      dialog: false,
+      currentNodeInfo: {},
+      originalForm: {
+        earlyWarning: '',
+        millName: "",
+        originalColor: "",
+        originalGrade: "",
+        originalLong: '',
+        originalName: "",
+        originalNo: "",
+        originalThick: '',
+        originalTypeId: "",
+        originalTypeName: "",
+        originalWidth: '',
+        referencePrice: '',
+        remarks: "",
+        stock: '',
+      },
+      selectMillDialog: false,  //选择厂家弹窗
+      typeFormRules: {
+        originalTypeName: [
+          {required: true, message: '请输入类型名称', trigger: 'blur'},
+          {max: 10, message: '字符长度最大不得超过10', trigger: 'blur'}
+        ]
+      },
+      originalFormRules: {
+        originalName: [
+          {required: true, message: '请输入原片名称', trigger: 'blur'},
+          {max: 20, message: '字符长度最大不得超过20', trigger: 'blur'}
+        ],
+        originalNo: [
+          // { required: true, message: '请输入原片名称', trigger: 'blur' },
+          {max: 20, message: '字符长度最大不得超过20', trigger: 'blur'}
+        ],
+        originalTypeId: [
+          {required: true, message: '请选择原片类型', trigger: 'blur'},
+        ],
+        originalColor: [
+          {required: true, message: '请输入颜色 / 膜系', trigger: 'blur'},
+          {max: 20, message: '字符长度最大不得超过20', trigger: 'blur'}
+        ],
+        millName: [
+          // {required: true, message: "厂家名称不能为空", trigger: "blur"},
+          {max: 20, message: '字符长度最大不得超过20', trigger: 'blur'}
+        ],
+        originalGrade:[
+          {max: 10, message: '字符长度最大不得超过10', trigger: 'blur'}
+        ],
+        remarks:[
+          {max: 125, message: '字符长度最大不得超过125', trigger: 'blur'}
+        ],
+        referencePrice:[
+          {pattern: /^(?!(0[0-9]{0,}$))[0-9]{1,}[.]{0,}[0-9]{0,}$/g, message: '请输入大于0的整数或小数'}
+        ]
+      }
+    }
+  },
+  created() {
+    this.getTreeData();
+    this.handleQuery();
+  },
+  mounted() {
+    var templateTableRef = this.$refs.templateTableRef.$refs.bodyWrapper
+    templateTableRef.addEventListener('scroll', () => {
+      // 滚动距离
+      const scrollLeft = templateTableRef.scrollLeft;
+      this.$refs.multipleTable.$refs.templateTableRef.scrollLeft = scrollLeft
+    })
+  },
+  updated() {
+    this.$nextTick(()=>{
+      this.$refs.templateTableRef.doLayout();
+    })
+  },
+  methods: {
+    /* 左侧tree查询 */
+    getTreeData() {
+      queryTree().then(res => {
+        if (res.code === 200) {
+          // this.treeData=res.data;
+          this.treeData = [{id: 0, originalTypeName: "原片类型", children: groupBy(res.data, "tid")}];
+          if (this.treeData) {
+            this.treeData.forEach(item => {
+              item.originalTypeId = item.id
+            })
+          }
+        }
+      })
+    },
+    /* 左侧tree树单击节点 */
+    handleNodeClick(val, node, component) {
+      console.log(val, node, component);
+      this.currentNodeInfo = val;
+      this.queryParams.originalTypeId = val.id;
+      this.handleQuery();
+    },
+    /* 左侧tree右击 */
+    rightClick(event, object, value, element) {
+      // console.log(event, object, value, element)
+      this.currentRightNodeInfo = object;
+      if (!Array.isArray(value.parent.data)) {
+        this.topNodeInfo = value.parent.data
+      }
+      this.contextMenuVisible = true;// 让菜单显示
+      const ele = document.querySelector('.right-menus');//绑定样式
+      ele.style.position = 'fixed';
+      ele.style.top = `${event.clientY}px`;
+      ele.style.left = `${event.clientX + 10}px`; //根据鼠标点击位置设置菜单出现
+    },
+    /* 新增类型节点 */
+    addType() {
+      this.typeDialogType = 'add';
+      this.contextMenuVisible = false;
+      this.typeDialog = true;
+      this.typeForm = {
+        originalTypeName: "",
+        tid: this.currentRightNodeInfo.id,
+        tidName: this.currentRightNodeInfo.originalTypeName
+      };
+    },
+    /* 编辑类型节点 */
+    editType() {
+      this.contextMenuVisible = false;
+      if (this.currentRightNodeInfo.id == 0) {
+        Message.warning('无法操作根节点');
+      } else {
+        this.typeDialogType = 'edit';
+        // this.contextMenuVisible = false;
+        this.typeDialog = true;
+        this.typeForm = JSON.parse(JSON.stringify(this.currentRightNodeInfo));
+        // console.log(this.topNodeInfo)
+        this.typeForm.tidName = this.topNodeInfo.originalTypeName;
+      }
+    },
+    /* 提交类型表单 */
+    typeSubmit(formName) {
+      this.$refs[formName].validate((valid) => {
+        if (valid) {
+          console.log(this.typeForm)
+          // this.typeForm.tid=
+          // alert('submit!');
+          if (this.typeDialogType === 'add') {
+            addOriginalType(this.typeForm).then(res => {
+              // console.log(res)
+              if (res.code === 200) {
+                Message.success(res.msg);
+                this.getTreeData();
+              } else {
+                Message.error(res.msg);
+                this.getTreeData();
+              }
+            })
+            this.typeDialog = false;
+
+          }
+          if (this.typeDialogType === 'edit') {
+            updOriginalType(this.typeForm).then(res => {
+              console.log(res)
+              if (res.code === 200) {
+                Message.success(res.msg);
+                this.getTreeData();
+              } else {
+                Message.error(res.msg);
+                this.getTreeData();
+              }
+              this.typeDialog = false;
+              // this.getTreeData();
+            })
+          }
+        } else {
+          // console.log('error submit!!');
+          return false;
+        }
+      });
+    },
+    /* 删除节点 */
+    delType() {
+      this.contextMenuVisible = false;
+      if (this.currentRightNodeInfo.id == 0) {
+        Message.warning('无法操作根节点');
+      } else {
+        this.$confirm('此操作将删除选中数据，是否继续?', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning',
+        }).then(() => {
+          delOriginalType({id: this.currentRightNodeInfo.id}).then(res => {
+            if (res.code === 200) {
+              Message.success(res.msg);
+              this.getTreeData();
+            } else {
+              Message.error(res.msg);
+            }
+          })
+        }).catch(() => {
+          this.$message({
+            type: 'info',
+            message: '已取消删除'
+          });
+        });
+      }
+    },
+    /* 查询原片数据 */
+    handleQuery() {
+      // console.log(this.queryParams)
+      queryOriginalFilm(this.queryParams).then(res => {
+        console.log(res)
+        if (res.code === 200) {
+          this.tableDate = res.data;
+          this.total = res.count;
+        }
+      })
+    },
+    /* 新增原片 */
+    handleAdd() {
+      if (this.treeData[0].children.length <= 0 ) {
+        Message.warning("在原片类型下请先新增子类型！")
+        return;
+      }
+      this.dialogType = 'add';
+      this.dialog = true;
+      this.originalForm = {
+        earlyWarning: '',
+        millName: "",
+        originalColor: "",
+        originalGrade: "",
+        originalLong: '',
+        originalName: "",
+        originalNo: "",
+        originalThick: '',
+        originalTypeId: "",
+        originalTypeName: "",
+        originalWidth: '',
+        referencePrice: '',
+        remarks: "",
+        stock: '',
+      };
+      let type = [];
+      if (this.currentNodeInfo.id && this.currentNodeInfo.id != 0) {
+        if (this.currentNodeInfo.children) {
+          type = this.currentNodeInfo.children
+          do {
+            if (type[0].children){
+              type = type[0].children
+            }
+            this.originalForm.originalTypeId = type[0].id;
+          }while (type[0].children);
+        }else {
+          this.originalForm.originalTypeId = this.currentNodeInfo.id;
+        }
+      }else {
+        type = JSON.parse(JSON.stringify(this.treeData))
+        do {
+          type = type[0].children
+          this.originalForm.originalTypeId = type[0].id;
+          this.originalForm.originalTypeName=type[0].originalTypeName;
+        }while (type[0].children);
+      }
+      // this.$refs.originalFormRef.resetFields();
+    },
+    /* 编辑原片 */
+    handleUpdate() {
+      if (!this.selected || this.selected === [] || this.selected.length === 0) {
+        Message.warning("请选择要修改的数据");
+      } else if (this.selected.length !== 1) {
+        Message.warning("请选择一条数据进行修改");
+      } else {
+        this.dialogType = 'edit';
+        this.dialog = true;
+        this.originalForm = JSON.parse(JSON.stringify(this.selected[0]));
+        console.log("originalForm" , JSON.stringify(this.originalForm))
+      }
+    },
+    /* 选择厂家 */
+    handleBlur() {
+      this.selectMillDialog = true;
+    },
+    /* 保存选择厂家弹窗 */
+    saveSelectMill(val) {
+      if (!val || val.length <= 0) {
+        Message.warning("请选择一条数据进行添加");
+        return false
+      }
+      if (val.length === 1) {
+        this.selectMillDialog = false;
+        this.originalForm.millName = val[0].millName;
+        this.$refs.millDialog.$refs.multipleMillTable.clearSelection();
+        this.$refs.millNameInput.blur();
+      }
+    },
+    /* 取消选择客户弹窗 */
+    cancelSelectMill() {
+      this.selectMillDialog = false;
+      this.$refs.millDialog.$refs.multipleMillTable.clearSelection();
+    },
+    /* 保存新增、编辑弹窗 */
+    saveOriginal(formName) {
+      // this.originalForm.typeId = Array.isArray(this.originalForm.typeId) ? this.originalForm.typeId[this.originalForm.typeId.length - 1] : this.originalForm.typeId;
+      this.$refs[formName].validate((valid) => {
+        if (valid) {
+          if (Array.isArray(this.originalForm.originalTypeId)) {
+            this.originalForm.originalTypeId = this.originalForm.originalTypeId.at(-1)
+          }
+          if (this.dialogType === 'add') {
+            addOriginalFilm(this.originalForm).then(res => {
+              if (res.code === 200) {
+                Message.success(res.msg);
+              } else {
+                Message.error(res.msg);
+              }
+              this.originalForm = []
+              this.handleQuery();
+            })
+          }
+          if (this.dialogType === 'edit') {
+            updOriginalFilm(this.originalForm).then(res => {
+              if (res.code === 200) {
+                Message.success(res.msg);
+                // this.getTreeData();
+              } else {
+                Message.error(res.msg);
+              }
+              this.originalForm = []
+              this.handleQuery();
+            })
+          }
+          this.dialog = false;
+        } else {
+          return false;
+        }
+      });
+    },
+    /* 取消新增、编辑弹窗 */
+    cancelOriginal(dialog, formName) {
+      this[dialog] = false;
+      this.$refs[formName].resetFields();
+    },
+    /* 删除原片 */
+    handleDelete() {
+      if (!this.selected || this.selected === [] || this.selected.length === 0) {
+        this.$message({
+          message: '请至少选择一条数据',
+          type: 'warning'
+        });
+      } else {
+        this.$confirm('此操作将删除选中数据，是否继续?', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning',
+        }).then(() => {
+          let ids = []
+          this.selected.forEach(item => {
+            ids.push(item.id)
+          })
+          delOriginalFilm({ids: ids.toString()}).then(res => {
+            if (res.code === 200) {
+              this.$message({
+                type: 'success',
+                message: res.msg
+              });
+              this.handleQuery();
+            } else {
+              this.$message({
+                type: 'error',
+                message: res.msg
+              });
+            }
+          })
+          this.selected = [];
+        }).catch(() => {
+          this.$message({
+            type: 'info',
+            message: '已取消删除'
+          });
+        });
+      }
+    },
+    /* 导出原片 */
+    handleExport() {
+      let ids = [];
+      if (this.selected.length > 0) {
+        this.selected.forEach(item => {
+          ids.push(item.id)
+        })
+      }
+      this.download('originalFilm/definition/exportOriginalFilm', {
+        ids: ids.toString()
+      }, `原片数据.xlsx`)
+    },
+    /*分页器*/
+    handleChange(size, num) {
+      this.queryParams.pageNum = num;
+      this.queryParams.pageSize = size;
+      this.handleQuery();
+    },
+    /*  勾选表格复选框*/
+    handleSelectionChange(val) {
+      this.selected = val;
+    },
+    /* 单击表格行 */
+    handleRowClick(row, column, event) {
+      this.$refs.templateTableRef.toggleRowSelection(row, column)
+    },
+    /* 翻页后序号连贯 */
+    getIndex($index) {
+      //  表格序号
+      return (this.queryParams.pageNum - 1) * this.queryParams.pageSize + $index + 1;
+    },
+  },
+}
+</script>
+
+<style lang="scss" scoped>
+.rightTable {
+  height: calc(100% - 105px);
+}
+
+.typeDialog {
+  ::v-deep .el-dialog {
+    min-height: 5%;
+  }
+}
+
+.dialogType {
+  ::v-deep .ipt2 {
+    width: 100%;
+    //justify-content: center;
+    .el-form-item {
+      width: 48%;
+      min-width: 300px;
+
+      .el-form-item__label {
+        width: 150px;
+      }
+
+      .el-form-item__content {
+        width: calc(100% - 150px);
+      }
+    }
+
+    .remarks {
+      .el-textarea {
+        top: -5px;
+      }
+    }
+  }
+}
+</style>

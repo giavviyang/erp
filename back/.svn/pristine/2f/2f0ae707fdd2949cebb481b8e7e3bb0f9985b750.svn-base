@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.erp.floor.mapper.sales.OrderProductMapper">
+
+    <resultMap id="OrderProductResult" type="OrderProduct">
+        <id property="id" column="id"/>
+        <result property="orderId" column="order_id"/>
+        <result property="orderNo" column="order_no"/>
+        <result property="productName" column="product_name"/>
+        <result property="printName" column="print_name"/>
+        <result property="productId" column="product_id"/>
+        <result property="wideHead" column="wide_head"/>
+        <result property="wideLittleHead" column="wide_little_head"/>
+        <result property="highHead" column="high_head"/>
+        <result property="highLittleHead" column="high_little_head"/>
+        <result property="angle" column="angle"/>
+        <result property="diameter" column="diameter"/>
+        <result property="diameterIncrement" column="diameter_increment"/>
+        <result property="innerArcLength" column="inner_arc_length"/>
+        <result property="arcDiameter" column="arc_diameter"/>
+        <result property="warehousingQuantity" column="warehousing_quantity"/>
+        <result property="warehouseLocation" column="warehouse_location"/>
+        <result property="shelfLocation" column="shelf_location"/>
+        <result property="num" column="num"/>
+        <result property="shelfNum" column="shelf_num"/>
+        <result property="unitPrice" column="unit_price"/>
+        <result property="position" column="position"/>
+        <result property="requirement" column="requirement"/>
+        <result property="remarks" column="remarks"/>
+        <result property="remarksOne" column="remarks_one"/>
+        <result property="remarksTwo" column="remarks_two"/>
+        <result property="productArea" column="product_area"/>
+        <result property="productWeight" column="product_weight"/>
+        <result property="additionalItem" column="additional_item"/>
+        <result property="sort" column="sort"/>
+        <result property="productAmount" column="product_amount"/>
+        <result property="curve" column="curve"/>
+        <result property="lengthen" column="lengthen"/>
+        <result property="singleArea" column="single_area"/>
+        <result property="singleClearingArea" column="single_clearing_area"/>
+        <result property="orderPackNum" column="order_pack_num"/>
+        <result property="orderDeliverNum" column="order_deliver_num"/>
+        <result property="completionNum" column="completion_num"/>
+        <result property="outsourcedNum" column="outsourced_num"/>
+        <result property="customNo" column="custom_no"/>
+        <result property="entryName" column="entry_name"/>
+        <result property="customerName" column="customer_name"/>
+    </resultMap>
+
+
+    <select id="obtainOrderProduct" parameterType="OrderRecordVo" resultMap="OrderProductResult">
+        select  p.*, r.custom_no, r.entry_name, r.customer_name
+        from order_product p
+        left join order_record r on p.order_id = r.id
+        where r.is_del = 0 AND r.is_cache = 0
+        <if test="orderNo != null and orderNo != ''">
+            AND r.order_no = #{orderNo}
+        </if>
+        <if test="customNo != null and customNo != ''">
+            AND r.custom_no = #{customNo}
+        </if>
+        <if test="entryName != null and entryName != ''">
+            AND r.entry_name like concat('%', #{entryName}, '%')
+        </if>
+        <if test="customerName != null and customerName != ''">
+            AND r.customer_name like concat('%', #{customerName}, '%')
+        </if>
+        <if test="productName != null and productName != ''">
+            AND p.product_name like concat('%', #{productName}, '%')
+        </if>
+        <if test="preparationDateStart != null and preparationDateStart != ''"><!-- 开始时间检索 -->
+            and date_format(r.preparation_date,'%y%m%d') &gt;= date_format(#{preparationDateStart},'%y%m%d')
+        </if>
+        <if test="preparationDateEnd != null and preparationDateEnd != ''"><!-- 结束时间检索 -->
+            and date_format(r.preparation_date,'%y%m%d') &lt;= date_format(#{preparationDateEnd},'%y%m%d')
+        </if>
+        order by p.order_no desc
+    </select>
+
+    <select id="selectByIds" parameterType="String" resultMap="OrderProductResult">
+        select  p.*, r.custom_no, r.entry_name, r.customer_name
+        from order_product p
+        left join order_record r on p.order_id = r.id
+        <where>
+            <if test="array != null">
+                AND p.order_id in
+                <foreach collection="array" item="ids" open="(" separator="," close=")">
+                    #{ids}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+    <select id="warehouseProduct" parameterType="OrderProduct" resultMap="OrderProductResult">
+        select  p.*, r.custom_no, r.entry_name, r.customer_name
+        from order_product p
+        left join order_record r on p.order_id = r.id
+        left join order_review w on p.order_id = w.order_id
+        where r.is_del = 0 AND r.is_cache = 0 AND w.order_result = 0
+        <if test="orderNo != null and orderNo != ''">
+            AND r.order_no = #{orderNo}
+        </if>
+        <if test="customNo != null and customNo != ''">
+            AND r.custom_no = #{customNo}
+        </if>
+        <if test="entryName != null and entryName != ''">
+            AND r.entry_name like concat('%', #{entryName}, '%')
+        </if>
+        <if test="customerName != null and customerName != ''">
+            AND r.customer_name like concat('%', #{customerName}, '%')
+        </if>
+        <if test="productName != null and productName != ''">
+            AND p.product_name like concat('%', #{productName}, '%')
+        </if>
+        order by p.order_no desc
+    </select>
+
+    <select id="outsourcedProduct" parameterType="OrderProduct" resultMap="OrderProductResult">
+        select  p.*, r.custom_no, r.entry_name, r.customer_name
+        from order_product p
+        left join order_record r on p.order_id = r.id
+        left join order_review w on r.id = w.order_id
+        where r.is_del = 0 AND r.is_cache = 0 AND r.order_type = '外协订单' AND w.order_result = 0
+        <if test="orderNo != null and orderNo != ''">
+            AND r.order_no = #{orderNo}
+        </if>
+        <if test="customNo != null and customNo != ''">
+            AND r.custom_no = #{customNo}
+        </if>
+        <if test="entryName != null and entryName != ''">
+            AND r.entry_name like concat('%', #{entryName}, '%')
+        </if>
+        <if test="customerName != null and customerName != ''">
+            AND r.customer_name like concat('%', #{customerName}, '%')
+        </if>
+        <if test="productName != null and productName != ''">
+            AND p.product_name like concat('%', #{productName}, '%')
+        </if>
+        order by p.order_no desc
+    </select>
+
+</mapper>
